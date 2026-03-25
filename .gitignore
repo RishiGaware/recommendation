@@ -1,0 +1,33 @@
+# Dependencies
+**/node_modules/
+node_modules/
+
+# Python virtual environment and caches
+**/.venv/
+.venv/
+**/__pycache__/
+**/*.py[cod]
+**/embeddings.pkl
+
+# Environment variables
+**/.env*
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build outputs
+**/dist/
+**/build/
+
+# Editor/OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
