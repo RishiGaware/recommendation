@@ -5,5 +5,5 @@ app = FastAPI()
 
 @app.post("/api/analyze")
 def analyze(data: dict):
-    text = data.get("text", "")
-    return analyze_text(text)
+    return analyze_text(data)
+ 

@@ -1,43 +1,70 @@
 import os
 import pickle
+import numpy as np
+import faiss
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 
-# Path to embeddings relative to this file
+# Path to artifacts
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
-EMBEDDINGS_PATH = os.path.join(MODEL_DIR, "embeddings.pkl")
+FAISS_INDEX_PATH = os.path.join(MODEL_DIR, "deviations.index")
+METADATA_PATH = os.path.join(MODEL_DIR, "embeddings.pkl")
 
 # Load model
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Load trained embeddings
-# Note: In a production environment, you might want to load this once at startup
+# Load FAISS index and metadata
 try:
-    with open(EMBEDDINGS_PATH, "rb") as f:
-        data = pickle.load(f)
-    stored_embeddings = data["embeddings"]
-    deviations = data["deviations"]
-except FileNotFoundError:
-    stored_embeddings = []
+    index = faiss.read_index(FAISS_INDEX_PATH)
+    with open(METADATA_PATH, "rb") as f:
+        metadata = pickle.load(f)
+    deviations = metadata["deviations"]
+except Exception as e:
+    index = None
     deviations = []
-    print("Warning: embeddings.pkl not found. Please run training script.")
+    print(f"Warning: Could not load FAISS index or metadata: {e}. Please run training script.")
 
-def analyze_text(input_text):
-    if len(stored_embeddings) == 0:
-        return {"error": "Model not trained. Please run training script."}
+def analyze_text(data):
+    if index is None or len(deviations) == 0:
+        return {"error": "Model not trained or index missing. Please run training script."}
 
+    # Extract text from structured input or fallback to string
+    if isinstance(data, dict):
+        text_parts = [
+            data.get("description", ""),
+            data.get("correctionAction", ""),
+            data.get("deviationType", ""),
+            data.get("deviationClassification", "")
+        ]
+        input_text = " ".join([str(p).strip() for p in text_parts if p])
+    else:
+        input_text = str(data)
+
+    if not input_text.strip():
+        return {"error": "No input text provided for analysis."}
+
+    # Encode and normalize input
     input_vec = model.encode([input_text])
+    input_vec = np.array(input_vec).astype('float32')
+    faiss.normalize_L2(input_vec)
 
-    similarities = cosine_similarity(input_vec, stored_embeddings)[0]
+    # Search in FAISS (k=10 nearest neighbors)
+    k = min(10, len(deviations))
+    distances, indices = index.search(input_vec, k)
 
     similar = []
-    for i, score in enumerate(similarities):
-        if score > 0.4: # Using 0.4 threshold for better recall, can be adjusted
+    # IndexFlatIP returns inner product, which is cosine similarity for normalized vectors
+    # distances are similarity scores in this case
+    for score, i in zip(distances[0], indices[0]):
+        if i == -1: continue # FAISS returns -1 if fewer than k neighbors found
+        
+        if score > 0.4: # Threshold
             similar.append({
                 "id": deviations[i]["id"],
                 "title": deviations[i].get("deviation_no", "Unknown"),
                 "rootCause": deviations[i].get("remarks") or "Unknown",
-                "score": float(score)
+                "score": float(score),
+                # Include more info if needed for frontend UI to show "why" it's similar
+                "description": (deviations[i].get("description") or "")[:200] + "..."
             })
 
     # Group root causes
@@ -59,5 +86,5 @@ def analyze_text(input_text):
     return {
         "possibleRootCauses": possible_causes,
         "similarDeviations": similar,
-        "explanation": f"Based on {len(similar)} semantically similar deviations"
+        "explanation": f"Based on {len(similar)} semantically similar historical deviations (FAISS powered)"
     }
