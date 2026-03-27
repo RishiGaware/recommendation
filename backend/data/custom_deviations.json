@@ -25,5 +25,195 @@
     "deviationType": "Unplanned",
     "deviationClassification": "Major",
     "created_at": "2026-03-26T13:33:45.061Z"
+  },
+  {
+    "id": 1774592662480,
+    "deviation_no": "DEV-WMS-2026",
+    "description": "Warehouse Management System (WMS) database sync error causing pallet location mismatch in the automated storage system.",
+    "remarks": "Software bug in the API handshake between the conveyor controller and the database.",
+    "correctionAction": "Manual database reconciliation and physical audit of bin locations.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Major",
+    "created_at": "2026-03-27T06:24:22.480Z"
+  },
+  {
+    "id": 1774593844361,
+    "deviation_no": "DEV-QC-POWER",
+    "description": "Severe power surge in the Quality Control lab caused a catastrophic failure of the HPLC mainboard.",
+    "remarks": "Electrical grid instability during thunderstorm.",
+    "correctionAction": "Sourced replacement mainboard and installed surge protector.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T06:44:04.361Z"
+  },
+  {
+    "id": 1774593845953,
+    "deviation_no": "DEV-QC-POWER",
+    "description": "Severe power surge in the Quality Control lab caused a catastrophic failure of the HPLC mainboard.",
+    "remarks": "Electrical grid instability during thunderstorm.",
+    "correctionAction": "Sourced replacement mainboard and installed surge protector.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T06:44:05.953Z"
+  },
+  {
+    "id": 1774593910751,
+    "deviation_no": "DEV-QC-POWER",
+    "description": "Severe power surge in the Quality Control lab caused a catastrophic failure of the HPLC mainboard.",
+    "remarks": "Electrical grid instability during thunderstorm.",
+    "correctionAction": "Sourced replacement mainboard and installed surge protector.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T06:45:10.751Z"
+  },
+  {
+    "id": 1774593912365,
+    "deviation_no": "DEV-QC-POWER",
+    "description": "Severe power surge in the Quality Control lab caused a catastrophic failure of the HPLC mainboard.",
+    "remarks": "Electrical grid instability during thunderstorm.",
+    "correctionAction": "Sourced replacement mainboard and installed surge protector.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T06:45:12.365Z"
+  },
+  {
+    "id": 1774593939291,
+    "deviation_no": "DEV-QC-POWER",
+    "description": "Severe power surge in the Quality Control lab caused a catastrophic failure of the HPLC mainboard.",
+    "remarks": "Electrical grid instability during thunderstorm.",
+    "correctionAction": "Sourced replacement mainboard and installed surge protector.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T06:45:39.291Z"
+  },
+  {
+    "id": 1774593941450,
+    "deviation_no": "DEV-QC-POWER",
+    "description": "Severe power surge in the Quality Control lab caused a catastrophic failure of the HPLC mainboard.",
+    "remarks": "Electrical grid instability during thunderstorm.",
+    "correctionAction": "Sourced replacement mainboard and installed surge protector.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T06:45:41.450Z"
+  },
+  {
+    "id": 1774595099291,
+    "deviation_no": "DEV-STABLE-001",
+    "description": "Spontaneous crystallization observed in the bulk API solution during storage at 4 C, despite being within the solubility limit.",
+    "remarks": "Nucleation triggered by micro-scratches on the internal surface of the new glass carboy.",
+    "correctionAction": "Solution warmed to 25 C to re-dissolve and stability testing initiated.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Major",
+    "created_at": "2026-03-27T07:04:59.291Z"
+  },
+  {
+    "id": 1774595120615,
+    "deviation_no": "DEV-STABLE-001",
+    "description": "Spontaneous crystallization observed in the bulk API solution during storage at 4 C, despite being within the solubility limit.",
+    "remarks": "Nucleation triggered by micro-scratches on the internal surface of the new glass carboy.",
+    "correctionAction": "Solution warmed to 25 C to re-dissolve and stability testing initiated.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Major",
+    "created_at": "2026-03-27T07:05:20.615Z"
+  },
+  {
+    "id": 1774600516581,
+    "deviation_no": "DEV-STERILE-999",
+    "description": "Sterilization cycle in Autoclave #4 failed to reach the required 121C setpoint for the full 20-minute duration.",
+    "remarks": "Degraded door seal causing steam pressure loss during the plateau phase.",
+    "correctionAction": "Batch quarantined and autoclave door gasket replaced after inspection.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T08:35:16.581Z"
+  },
+  {
+    "id": 1774600519794,
+    "deviation_no": "DEV-STERILE-999",
+    "description": "Sterilization cycle in Autoclave #4 failed to reach the required 121C setpoint for the full 20-minute duration.",
+    "remarks": "Degraded door seal causing steam pressure loss during the plateau phase.",
+    "correctionAction": "Batch quarantined and autoclave door gasket replaced after inspection.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T08:35:19.794Z"
+  },
+  {
+    "id": 1774600532892,
+    "deviation_no": "DEV-STERILE-999",
+    "description": "Sterilization cycle in Autoclave #4 failed to reach the required 121C setpoint for the full 20-minute duration.",
+    "remarks": "Degraded door seal causing steam pressure loss during the plateau phase.",
+    "correctionAction": "Batch quarantined and autoclave door gasket replaced after inspection.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T08:35:32.892Z"
+  },
+  {
+    "id": 1774600535508,
+    "deviation_no": "DEV-STERILE-999",
+    "description": "Sterilization cycle in Autoclave #4 failed to reach the required 121C setpoint for the full 20-minute duration.",
+    "remarks": "Degraded door seal causing steam pressure loss during the plateau phase.",
+    "correctionAction": "Batch quarantined and autoclave door gasket replaced after inspection.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T08:35:35.508Z"
+  },
+  {
+    "id": 1774600549270,
+    "deviation_no": "DEV-STERILE-999",
+    "description": "Sterilization cycle in Autoclave #4 failed to reach the required 121C setpoint for the full 20-minute duration.",
+    "remarks": "Degraded door seal causing steam pressure loss during the plateau phase.",
+    "correctionAction": "Batch quarantined and autoclave door gasket replaced after inspection.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T08:35:49.270Z"
+  },
+  {
+    "id": 1774600551541,
+    "deviation_no": "DEV-STERILE-999",
+    "description": "Sterilization cycle in Autoclave #4 failed to reach the required 121C setpoint for the full 20-minute duration.",
+    "remarks": "Degraded door seal causing steam pressure loss during the plateau phase.",
+    "correctionAction": "Batch quarantined and autoclave door gasket replaced after inspection.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T08:35:51.541Z"
+  },
+  {
+    "id": 1774600609452,
+    "deviation_no": "DEV-STERILE-999",
+    "description": "Sterilization cycle in Autoclave #4 failed to reach the required 121C setpoint for the full 20-minute duration.",
+    "remarks": "Degraded door seal causing steam pressure loss during the plateau phase.",
+    "correctionAction": "Batch quarantined and autoclave door gasket replaced after inspection.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T08:36:49.452Z"
+  },
+  {
+    "id": 1774600611577,
+    "deviation_no": "DEV-STERILE-999",
+    "description": "Sterilization cycle in Autoclave #4 failed to reach the required 121C setpoint for the full 20-minute duration.",
+    "remarks": "Degraded door seal causing steam pressure loss during the plateau phase.",
+    "correctionAction": "Batch quarantined and autoclave door gasket replaced after inspection.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T08:36:51.577Z"
+  },
+  {
+    "id": 1774600658517,
+    "deviation_no": "DEV-STERILE-999",
+    "description": "Sterilization cycle in Autoclave #4 failed to reach the required 121C setpoint for the full 20-minute duration.",
+    "remarks": "Degraded door seal causing steam pressure loss during the plateau phase.",
+    "correctionAction": "Batch quarantined and autoclave door gasket replaced after inspection.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T08:37:38.517Z"
+  },
+  {
+    "id": 1774600660943,
+    "deviation_no": "DEV-STERILE-999",
+    "description": "Sterilization cycle in Autoclave #4 failed to reach the required 121C setpoint for the full 20-minute duration.",
+    "remarks": "Degraded door seal causing steam pressure loss during the plateau phase.",
+    "correctionAction": "Batch quarantined and autoclave door gasket replaced after inspection.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T08:37:40.943Z"
   }
 ]

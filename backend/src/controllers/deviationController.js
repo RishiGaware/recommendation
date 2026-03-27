@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { exec } = require("child_process");
-const { analyzeDeviation } = require("../services/mlService");
+const { analyzeDeviation, addKnowledge } = require("../services/mlService");
 
 const DATA_FILE = path.join(__dirname, "../../data/custom_deviations.json");
 const TRAIN_SCRIPT = path.join(__dirname, "../../../ml-service/app/model/train.py");
@@ -102,7 +102,7 @@ const getDeviations = (req, res) => {
  *       201:
  *         description: Deviation saved
  */
-const createDeviation = (req, res) => {
+const createDeviation = async (req, res) => {
   try {
     const { 
       deviation_no, 
@@ -131,6 +131,15 @@ const createDeviation = (req, res) => {
 
     deviations.push(newDeviation);
     fs.writeFileSync(DATA_FILE, JSON.stringify(deviations, null, 2));
+    
+    // LIVE VECTORIZATION: Add to FAISS index immediately
+    try {
+      await addKnowledge(newDeviation);
+      console.log(`Live Vectorization successful for ${deviation_no}`);
+    } catch (mlError) {
+      console.error("Live Vectorization failed, but JSON was saved:", mlError.message);
+      // We don't fail the whole request because the data IS saved to JSON for future training
+    }
     
     res.status(201).json(newDeviation);
   } catch (error) {

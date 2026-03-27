@@ -143,7 +143,7 @@ function App() {
           input
         </h1>
         <p style={{ color: "#7f8c8d", fontSize: "1.1rem" }}>
-          Smart Deviation Analysis & Knowledge Management
+          Analysis & Knowledge Management
         </p>
       </header>
 
@@ -553,9 +553,26 @@ function App() {
                 />
               </div>
               <div style={{ marginBottom: "15px" }}>
-                <label style={{ display: "block", marginBottom: "6px", fontWeight: "600", fontSize: "0.9rem" }}>Event Description</label>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "6px",
+                    fontWeight: "600",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  Event Description
+                </label>
                 <textarea
-                  style={{ width: "100%", padding: "12px", borderRadius: "6px", border: "1px solid #dfe6e9", height: "80px", fontSize: "0.9rem", resize: "none" }}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    borderRadius: "6px",
+                    border: "1px solid #dfe6e9",
+                    height: "80px",
+                    fontSize: "0.9rem",
+                    resize: "none",
+                  }}
                   placeholder="What happened?"
                   value={devDesc}
                   onChange={(e) => setDevDesc(e.target.value)}
@@ -563,20 +580,57 @@ function App() {
               </div>
 
               <div style={{ marginBottom: "15px" }}>
-                <label style={{ display: "block", marginBottom: "6px", fontWeight: "600", fontSize: "0.9rem" }}>Immediate Correction Action</label>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "6px",
+                    fontWeight: "600",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  Immediate Correction Action
+                </label>
                 <input
-                  style={{ width: "100%", padding: "12px", borderRadius: "6px", border: "1px solid #dfe6e9", fontSize: "0.9rem" }}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    borderRadius: "6px",
+                    border: "1px solid #dfe6e9",
+                    fontSize: "0.9rem",
+                  }}
                   placeholder="Action taken..."
                   value={devAction}
                   onChange={(e) => setDevAction(e.target.value)}
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "15px" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "15px",
+                  marginBottom: "15px",
+                }}
+              >
                 <div>
-                  <label style={{ display: "block", marginBottom: "6px", fontWeight: "600", fontSize: "0.9rem" }}>Type</label>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "6px",
+                      fontWeight: "600",
+                      fontSize: "0.9rem",
+                    }}
+                  >
+                    Type
+                  </label>
                   <select
-                    style={{ width: "100%", padding: "12px", borderRadius: "6px", border: "1px solid #dfe6e9", background: "white" }}
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      borderRadius: "6px",
+                      border: "1px solid #dfe6e9",
+                      background: "white",
+                    }}
                     value={devType}
                     onChange={(e) => setDevType(e.target.value)}
                   >
@@ -585,9 +639,24 @@ function App() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: "block", marginBottom: "6px", fontWeight: "600", fontSize: "0.9rem" }}>Classification</label>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "6px",
+                      fontWeight: "600",
+                      fontSize: "0.9rem",
+                    }}
+                  >
+                    Classification
+                  </label>
                   <select
-                    style={{ width: "100%", padding: "12px", borderRadius: "6px", border: "1px solid #dfe6e9", background: "white" }}
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      borderRadius: "6px",
+                      border: "1px solid #dfe6e9",
+                      background: "white",
+                    }}
                     value={devClass}
                     onChange={(e) => setDevClass(e.target.value)}
                   >
@@ -599,19 +668,44 @@ function App() {
               </div>
 
               <div style={{ marginBottom: "20px" }}>
-                <label style={{ display: "block", marginBottom: "6px", fontWeight: "600", fontSize: "0.9rem" }}>Root Cause / Resolution</label>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "6px",
+                    fontWeight: "600",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  Root Cause / Resolution
+                </label>
                 <input
-                  style={{ width: "100%", padding: "12px", borderRadius: "6px", border: "1px solid #dfe6e9", fontSize: "0.9rem" }}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    borderRadius: "6px",
+                    border: "1px solid #dfe6e9",
+                    fontSize: "0.9rem",
+                  }}
                   placeholder="Final resolution..."
                   value={devRemarks}
                   onChange={(e) => setDevRemarks(e.target.value)}
                 />
               </div>
-              
+
               <button
                 onClick={handleAddDeviation}
                 disabled={isAdding}
-                style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "none", background: "#2ecc71", color: "white", fontWeight: "bold", cursor: "pointer", marginBottom: "20px" }}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  borderRadius: "8px",
+                  border: "none",
+                  background: "#2ecc71",
+                  color: "white",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  marginBottom: "20px",
+                }}
               >
                 {isAdding ? "Saving..." : "Save to Local Dataset"}
               </button>

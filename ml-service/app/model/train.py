@@ -6,10 +6,12 @@ from sentence_transformers import SentenceTransformer
 import pickle
 from app.data.deviations import deviations as base_deviations
 
-# Path to save artifacts
+# Path to artifacts (Project root / ml-data)
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
-FAISS_INDEX_PATH = os.path.join(MODEL_DIR, "deviations.index")
-METADATA_PATH = os.path.join(MODEL_DIR, "embeddings.pkl")
+# Move up 3 levels to reach dvms_recommendation/ then into ml-data/
+DATA_DIR = os.path.abspath(os.path.join(MODEL_DIR, "..", "..", "..", "ml-data"))
+FAISS_INDEX_PATH = os.path.join(DATA_DIR, "deviations.index")
+METADATA_PATH = os.path.join(DATA_DIR, "embeddings.pkl")
 CUSTOM_DEVIATIONS_PATH = os.path.join(MODEL_DIR, "..", "..", "..", "backend", "data", "custom_deviations.json")
 
 model = SentenceTransformer('all-MiniLM-L6-v2')
