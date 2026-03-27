@@ -19,9 +19,9 @@ def extract_whole_text(d):
     text_parts = [
         d.get("deviation_no", ""),
         d.get("description", "") or "",
-        d.get("deviation_type", "") or "",
-        d.get("severity", "") or d.get("deviation_classification", "") or "",
-        d.get("remarks", "") or d.get("correction_action", "") or ""
+        d.get("deviation_type") or d.get("deviationType") or "",
+        d.get("severity") or d.get("deviation_classification") or d.get("deviationClassification") or "",
+        d.get("remarks") or d.get("correction_action") or d.get("correctionAction") or ""
     ]
     
     # Add investigation approach details

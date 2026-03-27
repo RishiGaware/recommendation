@@ -52,12 +52,17 @@ def analyze_text(data):
     distances, indices = index.search(input_vec, k)
 
     similar = []
+    max_score = 0.0
+    if len(distances[0]) > 0:
+        max_score = float(distances[0][0])
+
     # IndexFlatIP returns inner product, which is cosine similarity for normalized vectors
     # distances are similarity scores in this case
     for score, i in zip(distances[0], indices[0]):
         if i == -1: continue # FAISS returns -1 if fewer than k neighbors found
         
-        if score > 0.4: # Threshold
+        # Higher threshold for production/requested precision
+        if score > 0.5:
             similar.append({
                 "id": deviations[i]["id"],
                 "title": deviations[i].get("deviation_no", "Unknown"),
@@ -86,5 +91,10 @@ def analyze_text(data):
     return {
         "possibleRootCauses": possible_causes,
         "similarDeviations": similar,
-        "explanation": f"Based on {len(similar)} semantically similar historical deviations (FAISS powered)"
+        "explanation": f"Based on {len(similar)} semantically similar historical deviations (FAISS powered)",
+        "debug": {
+            "maxScore": max_score,
+            "totalAnalyzed": len(deviations),
+            "inputLength": len(input_text)
+        }
     }

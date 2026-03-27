@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
-
 import {
   analyzeDeviation,
   getCustomDeviations,
   addCustomDeviation,
   trainModel,
 } from "./services/api";
+import { useState, useEffect } from "react";
 
 function App() {
   const [activeTab, setActiveTab] = useState("analyze");
@@ -23,6 +22,9 @@ function App() {
   const [customDeviations, setCustomDeviations] = useState([]);
   const [devNo, setDevNo] = useState("");
   const [devDesc, setDevDesc] = useState("");
+  const [devAction, setDevAction] = useState("");
+  const [devType, setDevType] = useState("Unplanned");
+  const [devClass, setDevClass] = useState("Major");
   const [devRemarks, setDevRemarks] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [isTraining, setIsTraining] = useState(false);
@@ -69,10 +71,14 @@ function App() {
       await addCustomDeviation({
         deviation_no: devNo,
         description: devDesc,
+        correctionAction: devAction,
+        deviationType: devType,
+        deviationClassification: devClass,
         remarks: devRemarks,
       });
       setDevNo("");
       setDevDesc("");
+      setDevAction("");
       setDevRemarks("");
       fetchDeviations();
       alert("Deviation added to local storage!");
@@ -134,7 +140,7 @@ function App() {
             WebkitTextFillColor: "transparent",
           }}
         >
-          DVMS Intelligence
+          input
         </h1>
         <p style={{ color: "#7f8c8d", fontSize: "1.1rem" }}>
           Smart Deviation Analysis & Knowledge Management
@@ -318,153 +324,186 @@ function App() {
 
           {result && (
             <div style={{ marginTop: "40px" }} className="fade-in">
-              <h3 style={{ marginBottom: "20px", fontSize: "1.5rem" }}>
-                AI Findings
-              </h3>
-
-              <div
-                style={{
-                  background: "#f8f9fa",
-                  padding: "25px",
-                  borderRadius: "15px",
-                  marginBottom: "30px",
-                  border: "1px solid #e9ecef",
-                }}
-              >
-                <h4
-                  style={{
-                    marginTop: 0,
-                    color: "#27ae60",
-                    marginBottom: "20px",
-                  }}
-                >
-                  Predicted Root Causes
-                </h4>
+              {result.error ? (
                 <div
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-                    gap: "20px",
+                    background: "#fff5f5",
+                    color: "#c53030",
+                    padding: "20px",
+                    borderRadius: "12px",
+                    border: "1px solid #feb2b2",
                   }}
                 >
-                  {result.possibleRootCauses.map((c, i) => (
-                    <div
-                      key={i}
+                  <h4 style={{ marginTop: 0 }}>Analysis Error</h4>
+                  <p>{result.error}</p>
+                </div>
+              ) : (
+                <>
+                  <h3 style={{ marginBottom: "20px", fontSize: "1.5rem" }}>
+                    AI Findings
+                  </h3>
+
+                  <div
+                    style={{
+                      background: "#f8f9fa",
+                      padding: "25px",
+                      borderRadius: "15px",
+                      marginBottom: "30px",
+                      border: "1px solid #e9ecef",
+                    }}
+                  >
+                    <h4
                       style={{
-                        background: "white",
-                        padding: "20px",
-                        borderRadius: "12px",
-                        boxShadow: "0 4px 6px rgba(0,0,0,0.02)",
+                        marginTop: 0,
+                        color: "#27ae60",
+                        marginBottom: "20px",
                       }}
                     >
+                      Predicted Root Causes
+                    </h4>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(250px, 1fr))",
+                        gap: "20px",
+                      }}
+                    >
+                      {result.possibleRootCauses?.map((c, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            background: "white",
+                            padding: "20px",
+                            borderRadius: "12px",
+                            boxShadow: "0 4px 6px rgba(0,0,0,0.02)",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: "0.9rem",
+                              color: "#95a5a6",
+                              marginBottom: "5px",
+                            }}
+                          >
+                            Category
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "1.2rem",
+                              fontWeight: "bold",
+                              marginBottom: "15px",
+                            }}
+                          >
+                            {c.name}
+                          </div>
+                          <div
+                            style={{
+                              height: "8px",
+                              background: "#f1f2f6",
+                              borderRadius: "10px",
+                              overflow: "hidden",
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: `${c.probability * 100}%`,
+                                height: "100%",
+                                background: "#2ecc71",
+                              }}
+                            ></div>
+                          </div>
+                          <div
+                            style={{
+                              textAlign: "right",
+                              marginTop: "8px",
+                              fontSize: "0.85rem",
+                              fontWeight: "600",
+                              color: "#27ae60",
+                            }}
+                          >
+                            {Math.round(c.probability * 100)}% Confidence
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <h4 style={{ marginBottom: "20px" }}>
+                    Historically Similar Cases
+                  </h4>
+                  <div style={{ display: "grid", gap: "20px" }}>
+                    {result.similarDeviations?.map((d) => (
                       <div
+                        key={d.id}
                         style={{
-                          fontSize: "0.9rem",
-                          color: "#95a5a6",
-                          marginBottom: "5px",
-                        }}
-                      >
-                        Category
-                      </div>
-                      <div
-                        style={{
-                          fontSize: "1.2rem",
-                          fontWeight: "bold",
-                          marginBottom: "15px",
-                        }}
-                      >
-                        {c.name}
-                      </div>
-                      <div
-                        style={{
-                          height: "8px",
-                          background: "#f1f2f6",
-                          borderRadius: "10px",
-                          overflow: "hidden",
+                          background: "white",
+                          padding: "20px",
+                          borderRadius: "12px",
+                          border: "1px solid #f1f2f6",
+                          boxShadow: "0 2px 5px rgba(0,0,0,0.02)",
                         }}
                       >
                         <div
                           style={{
-                            width: `${c.probability * 100}%`,
-                            height: "100%",
-                            background: "#2ecc71",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            marginBottom: "10px",
                           }}
-                        ></div>
+                        >
+                          <span style={{ fontWeight: "700", color: "#34495e" }}>
+                            {d.title}
+                          </span>
+                          <span
+                            style={{
+                              background: "#edf2ff",
+                              color: "#364fc7",
+                              padding: "4px 10px",
+                              borderRadius: "20px",
+                              fontSize: "0.8rem",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            {Math.round(d.score * 100)}% Similarity
+                          </span>
+                        </div>
+                        <p
+                          style={{
+                            fontSize: "0.95rem",
+                            color: "#495057",
+                            lineHeight: "1.5",
+                            margin: "10px 0",
+                            background: "#f8f9fa",
+                            padding: "12px",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          {d.description}
+                        </p>
+                        <div style={{ fontSize: "0.9rem", marginTop: "10px" }}>
+                          <strong style={{ color: "#748ffc" }}>
+                            Resolution:
+                          </strong>{" "}
+                          <span style={{ color: "#495057" }}>
+                            {d.rootCause}
+                          </span>
+                        </div>
                       </div>
-                      <div
+                    ))}
+                    {result.similarDeviations?.length === 0 && (
+                      <p
                         style={{
-                          textAlign: "right",
-                          marginTop: "8px",
-                          fontSize: "0.85rem",
-                          fontWeight: "600",
-                          color: "#27ae60",
+                          textAlign: "center",
+                          color: "#95a5a6",
+                          padding: "20px",
                         }}
                       >
-                        {Math.round(c.probability * 100)}% Confidence
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <h4 style={{ marginBottom: "20px" }}>
-                Historically Similar Cases
-              </h4>
-              <div style={{ display: "grid", gap: "20px" }}>
-                {result.similarDeviations.map((d) => (
-                  <div
-                    key={d.id}
-                    style={{
-                      background: "white",
-                      padding: "20px",
-                      borderRadius: "12px",
-                      border: "1px solid #f1f2f6",
-                      boxShadow: "0 2px 5px rgba(0,0,0,0.02)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      <span style={{ fontWeight: "700", color: "#34495e" }}>
-                        {d.title}
-                      </span>
-                      <span
-                        style={{
-                          background: "#edf2ff",
-                          color: "#364fc7",
-                          padding: "4px 10px",
-                          borderRadius: "20px",
-                          fontSize: "0.8rem",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        {Math.round(d.score * 100)}% Similarity
-                      </span>
-                    </div>
-                    <p
-                      style={{
-                        fontSize: "0.95rem",
-                        color: "#495057",
-                        lineHeight: "1.5",
-                        margin: "10px 0",
-                        background: "#f8f9fa",
-                        padding: "12px",
-                        borderRadius: "8px",
-                      }}
-                    >
-                      {d.description}
-                    </p>
-                    <div style={{ fontSize: "0.9rem", marginTop: "10px" }}>
-                      <strong style={{ color: "#748ffc" }}>Resolution:</strong>{" "}
-                      <span style={{ color: "#495057" }}>{d.rootCause}</span>
-                    </div>
+                        No matches found above similarity threshold.
+                      </p>
+                    )}
                   </div>
-                ))}
-              </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -514,69 +553,65 @@ function App() {
                 />
               </div>
               <div style={{ marginBottom: "15px" }}>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "6px",
-                    fontWeight: "600",
-                    fontSize: "0.9rem",
-                  }}
-                >
-                  Event Description
-                </label>
+                <label style={{ display: "block", marginBottom: "6px", fontWeight: "600", fontSize: "0.9rem" }}>Event Description</label>
                 <textarea
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    borderRadius: "6px",
-                    border: "1px solid #dfe6e9",
-                    height: "80px",
-                    fontSize: "0.9rem",
-                    resize: "none",
-                  }}
+                  style={{ width: "100%", padding: "12px", borderRadius: "6px", border: "1px solid #dfe6e9", height: "80px", fontSize: "0.9rem", resize: "none" }}
                   placeholder="What happened?"
                   value={devDesc}
                   onChange={(e) => setDevDesc(e.target.value)}
                 />
               </div>
-              <div style={{ marginBottom: "20px" }}>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "6px",
-                    fontWeight: "600",
-                    fontSize: "0.9rem",
-                  }}
-                >
-                  Root Cause / Remarks
-                </label>
+
+              <div style={{ marginBottom: "15px" }}>
+                <label style={{ display: "block", marginBottom: "6px", fontWeight: "600", fontSize: "0.9rem" }}>Immediate Correction Action</label>
                 <input
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    borderRadius: "6px",
-                    border: "1px solid #dfe6e9",
-                    fontSize: "0.9rem",
-                  }}
-                  placeholder="Root cause identified..."
+                  style={{ width: "100%", padding: "12px", borderRadius: "6px", border: "1px solid #dfe6e9", fontSize: "0.9rem" }}
+                  placeholder="Action taken..."
+                  value={devAction}
+                  onChange={(e) => setDevAction(e.target.value)}
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "15px" }}>
+                <div>
+                  <label style={{ display: "block", marginBottom: "6px", fontWeight: "600", fontSize: "0.9rem" }}>Type</label>
+                  <select
+                    style={{ width: "100%", padding: "12px", borderRadius: "6px", border: "1px solid #dfe6e9", background: "white" }}
+                    value={devType}
+                    onChange={(e) => setDevType(e.target.value)}
+                  >
+                    <option value="Unplanned">Unplanned</option>
+                    <option value="Planned">Planned</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", marginBottom: "6px", fontWeight: "600", fontSize: "0.9rem" }}>Classification</label>
+                  <select
+                    style={{ width: "100%", padding: "12px", borderRadius: "6px", border: "1px solid #dfe6e9", background: "white" }}
+                    value={devClass}
+                    onChange={(e) => setDevClass(e.target.value)}
+                  >
+                    <option value="Minor">Minor</option>
+                    <option value="Major">Major</option>
+                    <option value="Critical">Critical</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: "20px" }}>
+                <label style={{ display: "block", marginBottom: "6px", fontWeight: "600", fontSize: "0.9rem" }}>Root Cause / Resolution</label>
+                <input
+                  style={{ width: "100%", padding: "12px", borderRadius: "6px", border: "1px solid #dfe6e9", fontSize: "0.9rem" }}
+                  placeholder="Final resolution..."
                   value={devRemarks}
                   onChange={(e) => setDevRemarks(e.target.value)}
                 />
               </div>
+              
               <button
                 onClick={handleAddDeviation}
                 disabled={isAdding}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: "8px",
-                  border: "none",
-                  background: "#2ecc71",
-                  color: "white",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  marginBottom: "20px",
-                }}
+                style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "none", background: "#2ecc71", color: "white", fontWeight: "bold", cursor: "pointer", marginBottom: "20px" }}
               >
                 {isAdding ? "Saving..." : "Save to Local Dataset"}
               </button>

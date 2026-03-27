@@ -6,12 +6,34 @@ const { analyzeDeviation } = require("../services/mlService");
 const DATA_FILE = path.join(__dirname, "../../data/custom_deviations.json");
 const TRAIN_SCRIPT = path.join(__dirname, "../../../ml-service/app/model/train.py");
 
+/**
+ * @openapi
+ * /api/deviation/analyze:
+ *   post:
+ *     summary: Analyze a deviation using AI
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               description:
+ *                 type: string
+ *               correctionAction:
+ *                 type: string
+ *               deviationType:
+ *                 type: string
+ *               deviationClassification:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: AI analysis results
+ */
 const analyze = async (req, res) => {
   try {
     const { description, correctionAction, deviationType, deviationClassification } = req.body;
     
-    // Pass the structured object directly to the ML service service
-    // The ML service now handles concatenation internally
     const result = await analyzeDeviation({ 
       description, 
       correctionAction, 
@@ -23,22 +45,23 @@ const analyze = async (req, res) => {
   } catch (error) {
     if (error.response) {
       console.error("ML Service Error Data:", error.response.data);
-      console.error("ML Service Status Code:", error.response.status);
-    } else if (error.request) {
-      console.error("ML Service No Response Received:", error.request);
-    } else {
-      console.error("Error setting up request:", error.message);
     }
-    
     res.status(500).json({ 
       error: "Failed to analyze deviation", 
-      details: error.message,
-      mlServiceError: error.response ? error.response.data : "Unknown",
-      recommendation: "Ensure the ML service is running and check ML service logs."
+      details: error.message
     });
   }
 };
 
+/**
+ * @openapi
+ * /api/deviation:
+ *   get:
+ *     summary: Get all custom deviations
+ *     responses:
+ *       200:
+ *         description: List of deviations
+ */
 const getDeviations = (req, res) => {
   try {
     if (!fs.existsSync(DATA_FILE)) {
@@ -51,9 +74,44 @@ const getDeviations = (req, res) => {
   }
 };
 
+/**
+ * @openapi
+ * /api/deviation:
+ *   post:
+ *     summary: Add new knowledge (custom deviation)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               deviation_no:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               remarks:
+ *                 type: string
+ *               correctionAction:
+ *                 type: string
+ *               deviationType:
+ *                 type: string
+ *               deviationClassification:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Deviation saved
+ */
 const createDeviation = (req, res) => {
   try {
-    const { deviation_no, description, remarks } = req.body;
+    const { 
+      deviation_no, 
+      description, 
+      remarks, 
+      correctionAction, 
+      deviationType, 
+      deviationClassification 
+    } = req.body;
     
     let deviations = [];
     if (fs.existsSync(DATA_FILE)) {
@@ -64,7 +122,10 @@ const createDeviation = (req, res) => {
       id: Date.now(),
       deviation_no,
       description,
-      remarks,
+      remarks, // This maps to rootCause in the ML model
+      correctionAction,
+      deviationType,
+      deviationClassification,
       created_at: new Date().toISOString()
     };
 
@@ -77,6 +138,15 @@ const createDeviation = (req, res) => {
   }
 };
 
+/**
+ * @openapi
+ * /api/deviation/train:
+ *   post:
+ *     summary: Trigger model retraining
+ *     responses:
+ *       200:
+ *         description: Retraining completed
+ */
 const trainModel = (req, res) => {
   const ML_SERVICE_DIR = path.join(__dirname, "../../../ml-service");
   
@@ -85,15 +155,11 @@ const trainModel = (req, res) => {
       console.error(`Exec error: ${error}`);
       return res.status(500).json({ error: "Training failed", details: stderr || error.message });
     }
-    console.log(`Training stdout: ${stdout}`);
-    if (stderr) console.error(`Training stderr: ${stderr}`);
     
-    // Trigger uvicorn reload by touching main.py
     try {
       const mainPy = path.join(ML_SERVICE_DIR, "app/main.py");
       const now = new Date();
       fs.utimesSync(mainPy, now, now);
-      console.log("Touched main.py to trigger reload");
     } catch (e) {
       console.error("Failed to touch main.py:", e);
     }
