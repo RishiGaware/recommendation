@@ -215,5 +215,15 @@
     "deviationType": "Unplanned",
     "deviationClassification": "Critical",
     "created_at": "2026-03-27T08:37:40.943Z"
+  },
+  {
+    "id": 1774602467005,
+    "deviation_no": "DEV-IT-HEAT",
+    "description": "Excessive heat generation in the primary data center from server rack #12 overheating.",
+    "remarks": "Mechanical wear and failure of the redundant brushless cooling fan assembly in Rack #12.",
+    "correctionAction": "Emergency portable AC unit deployed and server loads migrated to secondary node.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-03-27T09:07:47.005Z"
   }
 ]
