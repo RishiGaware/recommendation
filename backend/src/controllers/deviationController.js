@@ -1,9 +1,13 @@
 const fs = require("fs");
 const path = require("path");
-const { analyzeDeviation, addKnowledge, train } = require("../services/mlService");
 
-const DATA_FILE = path.join(__dirname, "../../data/custom_deviations.json");
+const {
+  analyzeDeviation,
+  addKnowledge,
+  train,
+} = require("../services/mlService");
 
+const DATA_FILE = path.join(__dirname, "../../data/deviations.json");
 
 /**
  * @openapi
@@ -19,8 +23,6 @@ const DATA_FILE = path.join(__dirname, "../../data/custom_deviations.json");
  *             properties:
  *               description:
  *                 type: string
- *               correctionAction:
- *                 type: string
  *               deviationType:
  *                 type: string
  *               deviationClassification:
@@ -31,24 +33,24 @@ const DATA_FILE = path.join(__dirname, "../../data/custom_deviations.json");
  */
 const analyze = async (req, res) => {
   try {
-    const { description, correctionAction, rootCauses, deviationType, deviationClassification } = req.body;
-    
-    const result = await analyzeDeviation({ 
-      description, 
-      correctionAction, 
+    const { description, rootCauses, deviationType, deviationClassification } =
+      req.body;
+
+    const result = await analyzeDeviation({
+      description,
       rootCauses,
-      deviationType, 
-      deviationClassification 
+      deviationType,
+      deviationClassification,
     });
-    
+
     res.json(result);
   } catch (error) {
     if (error.response) {
       console.error("ML Service Error Data:", error.response.data);
     }
-    res.status(500).json({ 
-      error: "Failed to analyze deviation", 
-      details: error.message
+    res.status(500).json({
+      error: "Failed to analyze deviation",
+      details: error.message,
     });
   }
 };
@@ -90,9 +92,7 @@ const getDeviations = (req, res) => {
  *                 type: string
  *               description:
  *                 type: string
- *               remarks:
- *                 type: string
- *               correctionAction:
+ *               rootCauses:
  *                 type: string
  *               deviationType:
  *                 type: string
@@ -104,15 +104,14 @@ const getDeviations = (req, res) => {
  */
 const createDeviation = async (req, res) => {
   try {
-    const { 
-      deviation_no, 
-      description, 
-      remarks, 
-      correctionAction, 
-      deviationType, 
-      deviationClassification 
+    const {
+      deviation_no,
+      description,
+      rootCauses,
+      deviationType,
+      deviationClassification,
     } = req.body;
-    
+
     let deviations = [];
     if (fs.existsSync(DATA_FILE)) {
       deviations = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
@@ -122,25 +121,23 @@ const createDeviation = async (req, res) => {
       id: Date.now(),
       deviation_no,
       description,
-      remarks, // This maps to rootCause in the ML model
-      correctionAction,
+      rootCauses,
       deviationType,
       deviationClassification,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     };
 
     deviations.push(newDeviation);
     fs.writeFileSync(DATA_FILE, JSON.stringify(deviations, null, 2));
-    
-    // LIVE VECTORIZATION: Add to FAISS index immediately
+
+    // Add vector to FAISS index instantly via ML service (no full retrain needed)
     try {
       await addKnowledge(newDeviation);
-      console.log(`Live Vectorization successful for ${deviation_no}`);
+      console.log(`Deviation vectorized and added to index: ${deviation_no}`);
     } catch (mlError) {
-      console.error("Live Vectorization failed, but JSON was saved:", mlError.message);
-      // We don't fail the whole request because the data IS saved to JSON for future training
+      console.error("Failed to add to ML index:", mlError.message);
     }
-    
+
     res.status(201).json(newDeviation);
   } catch (error) {
     res.status(500).json({ error: "Failed to save deviation" });
@@ -164,9 +161,9 @@ const trainModel = async (req, res) => {
     if (error.response) {
       console.error("ML Service Error Data:", error.response.data);
     }
-    res.status(500).json({ 
-      error: "Training failed", 
-      details: error.message 
+    res.status(500).json({
+      error: "Training failed",
+      details: error.message,
     });
   }
 };

@@ -45,7 +45,7 @@ def analyze_text(data):
             similar.append({
                 "id": store.deviations[i]["id"],
                 "title": store.deviations[i].get("deviation_no", "Unknown"),
-                "rootCause": store.deviations[i].get("remarks") or "Unknown",
+                "rootCause": store.deviations[i].get("rootCauses") or "Unknown",
                 "score": float(score),
                 # Include more info if needed for frontend UI to show "why" it's similar
                 "description": store.deviations[i].get("description") or ""

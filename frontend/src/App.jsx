@@ -1,8 +1,8 @@
 import {
   analyzeDeviation,
-  getCustomDeviations,
   addCustomDeviation,
   trainModel,
+  getCustomDeviations,
 } from "./services/api";
 import { useState, useEffect } from "react";
 
@@ -13,7 +13,7 @@ function App() {
 
   // Analyze State
   const [description, setDescription] = useState("");
-  const [correctionAction, setCorrectionAction] = useState("");
+  const [rootCauses, setRootCauses] = useState("");
   const [deviationType, setDeviationType] = useState("Unplanned");
   const [deviationClassification, setDeviationClassification] =
     useState("Major");
@@ -24,10 +24,9 @@ function App() {
   const [customDeviations, setCustomDeviations] = useState([]);
   const [devNo, setDevNo] = useState("");
   const [devDesc, setDevDesc] = useState("");
-  const [devAction, setDevAction] = useState("");
+  const [devRootCauses, setDevRootCauses] = useState("");
   const [devType, setDevType] = useState("Unplanned");
   const [devClass, setDevClass] = useState("Major");
-  const [devRemarks, setDevRemarks] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [isTraining, setIsTraining] = useState(false);
   const [trainStatus, setTrainStatus] = useState("");
@@ -55,13 +54,8 @@ function App() {
         description,
         deviationType,
         deviationClassification,
+        rootCauses,
       };
-
-      if (deviationType === "Unplanned") {
-        payload.rootCauses = correctionAction;
-      } else {
-        payload.correctionAction = correctionAction;
-      }
 
       const res = await analyzeDeviation(payload);
       setResult(res.data);
@@ -80,16 +74,15 @@ function App() {
       await addCustomDeviation({
         deviation_no: devNo,
         description: devDesc,
-        correctionAction: devAction,
         deviationType: devType,
         deviationClassification: devClass,
-        remarks: devRemarks,
+        rootCauses: devRootCauses,
       });
       setDevNo("");
       setDevDesc("");
-      setDevAction("");
-      setDevRemarks("");
+      setDevRootCauses("");
       fetchDeviations();
+      setIsAdding(false);
       alert("Deviation added to local storage!");
     } catch (error) {
       console.error("Error adding deviation:", error);
@@ -104,7 +97,7 @@ function App() {
     try {
       await trainModel();
       setTrainStatus("Training completed successfully!");
-      alert("Model retrained!");
+      alert("Model updated successfully!");
     } catch (error) {
       setTrainStatus("Training failed.");
       console.error("Training error:", error);
@@ -178,20 +171,12 @@ function App() {
           </div>
 
           <div className="form-group">
-            <label>
-              {deviationType === "Unplanned"
-                ? "Root Causes"
-                : "Correction Action"}
-            </label>
+            <label>Root Causes</label>
             <textarea
               style={{ height: "60px" }}
-              placeholder={
-                deviationType === "Unplanned"
-                  ? "Root causes..."
-                  : "Immediate action taken..."
-              }
-              value={correctionAction}
-              onChange={(e) => setCorrectionAction(e.target.value)}
+              placeholder="Root causes..."
+              value={rootCauses}
+              onChange={(e) => setRootCauses(e.target.value)}
             />
           </div>
 
@@ -316,12 +301,10 @@ function App() {
               </div>
             </div>
             <div className="form-group">
-              <label>
-                {devType === "Unplanned" ? "Root Causes" : "Resolution"}
-              </label>
+              <label>Root Causes</label>
               <input
-                value={devRemarks}
-                onChange={(e) => setDevRemarks(e.target.value)}
+                value={devRootCauses}
+                onChange={(e) => setDevRootCauses(e.target.value)}
               />
             </div>
             <button
@@ -340,14 +323,16 @@ function App() {
               }}
             >
               <label>System</label>
-              <button
-                className="btn btn-secondary"
-                onClick={handleTrain}
-                disabled={isTraining}
-                style={{ marginTop: "5px" }}
-              >
-                {isTraining ? "Retraining..." : "Retrain Model"}
-              </button>
+              <div style={{ marginTop: "10px" }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleTrain}
+                  disabled={isTraining}
+                  style={{ width: "100%", fontSize: "0.8rem" }}
+                >
+                  {isTraining ? "Processing..." : "Train Model"}
+                </button>
+              </div>
               {trainStatus && (
                 <p
                   style={{

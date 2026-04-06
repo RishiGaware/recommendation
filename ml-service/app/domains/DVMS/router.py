@@ -16,3 +16,6 @@ def add_knowledge(data: dict):
 @router.post("/train")
 def train():
     return train_model()
+
+if __name__ == "__main__":
+    pass
