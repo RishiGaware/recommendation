@@ -256,5 +256,14 @@
     "deviationType": "Unplanned",
     "deviationClassification": "Major",
     "created_at": "2026-04-06T12:33:17.395Z"
+  },
+  {
+    "id": 1775479766946,
+    "deviation_no": "DEV-PH-2026-901",
+    "description": "Sticky patches observed on Batch #ORL-301 oral tablets after 3 days in the bulk container. Tablets were clumping together during in-process inspection.",
+    "rootCauses": "Excess residual moisture in granules due to insufficient drying time in the fluidized bed dryer.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Major",
+    "created_at": "2026-04-06T12:49:26.946Z"
   }
 ]

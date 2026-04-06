@@ -222,6 +222,18 @@ function App() {
 
                   <label style={{ color: "#000", fontWeight: "600" }}>
                     Similar Cases
+                    {result.searchMode && (
+                      <span
+                        style={{
+                          fontWeight: "400",
+                          fontSize: "0.75rem",
+                          color: "#888",
+                          marginLeft: "8px",
+                        }}
+                      >
+                        (matched by: {result.searchMode})
+                      </span>
+                    )}
                   </label>
                   <div style={{ marginTop: "10px" }}>
                     {result.similarDeviations?.map((d) => (
@@ -231,10 +243,10 @@ function App() {
                             className="card-title"
                             style={{ fontSize: "0.85rem" }}
                           >
-                            {d.title}
+                            {d.deviation_no}
                           </span>
                           <span className="card-tag">
-                            {Math.round(d.score * 100)}% Match
+                            {d.matchScore}% Match
                           </span>
                         </div>
                         <p className="description-box">{d.description}</p>
@@ -245,7 +257,8 @@ function App() {
                             color: "#666",
                           }}
                         >
-                          <strong>Resolution:</strong> {d.rootCause}
+                          <strong>Root Causes:</strong>{" "}
+                          {d.rootCauses || "Unknown"}
                         </div>
                       </div>
                     ))}

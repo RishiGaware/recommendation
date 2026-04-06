@@ -6,7 +6,6 @@ import faiss
 import pickle
 
 # Add the root directory to the path so it can find the 'app' module
-# We are currently in ml-service/app/domains/DVMS/model/
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")))
 
 from app.core.model_manager import get_shared_model
@@ -17,53 +16,58 @@ DEVIATIONS_PATH = os.path.abspath(os.path.join(MODEL_DIR, "..", "..", "..", ".."
 
 # Internal ML metadata and index storage
 DATA_DIR = os.path.abspath(os.path.join(MODEL_DIR, "..", "ml-data"))
-FAISS_INDEX_PATH = os.path.join(DATA_DIR, "deviations.index")
+DESC_INDEX_PATH = os.path.join(DATA_DIR, "desc.index")
+ROOT_INDEX_PATH = os.path.join(DATA_DIR, "root.index")
 METADATA_PATH = os.path.join(DATA_DIR, "embeddings.pkl")
 
 model = get_shared_model()
 
-def extract_whole_text(d):
-    """Extracts strictly required text from a deviation object for semantic indexing."""
-    text_parts = [
-        d.get("description", "") or "",
-        d.get("deviation_type") or d.get("deviationType") or "",
-        d.get("severity") or d.get("deviation_classification") or d.get("deviationClassification") or "",
-        d.get("rootCauses") or ""
-    ]
-    return " ".join([str(p).strip() for p in text_parts if p])
+def safe_text(val):
+    return str(val).strip() if val else ""
 
 def train_model():
     """
-    Trains the vector model by rebuilding the index from scratch using all data.
+    Trains TWO vector indices from scratch:
+      1. desc.index  - built from deviation descriptions
+      2. root.index  - built from rootCauses text
     """
     all_deviations = []
 
     # Load consolidated deviations
     if os.path.exists(DEVIATIONS_PATH):
         try:
-            with open(DEVIATIONS_PATH, "r") as f:
+            with open(DEVIATIONS_PATH, "r", encoding="utf-8") as f:
                 all_deviations = json.load(f)
         except Exception as e:
             print(f"Error loading deviations: {e}")
     else:
         print(f"Warning: Data file not found at {DEVIATIONS_PATH}")
 
-    # Map "whole object" to text for embedding
-    texts = [extract_whole_text(d) for d in all_deviations]
+    if not all_deviations:
+        return {"error": "No deviations found to train on."}
 
-    # Generate embeddings
-    embeddings = model.encode(texts)
-    embeddings = np.array(embeddings).astype('float32')
+    # Build text lists for each dimension
+    desc_texts = [safe_text(d.get("description")) for d in all_deviations]
+    root_texts = [
+        safe_text(d.get("rootCauses")) or safe_text(d.get("description"))
+        for d in all_deviations
+    ]
 
-    # Create and save FAISS index
-    dimension = embeddings.shape[1]
-    faiss.normalize_L2(embeddings)
-    index = faiss.IndexFlatIP(dimension)
-    index.add(embeddings)
+    def build_index(texts):
+        embeddings = model.encode(texts)
+        embeddings = np.array(embeddings).astype("float32")
+        faiss.normalize_L2(embeddings)
+        idx = faiss.IndexFlatIP(embeddings.shape[1])
+        idx.add(embeddings)
+        return idx
 
-    faiss.write_index(index, FAISS_INDEX_PATH)
+    desc_index = build_index(desc_texts)
+    root_index = build_index(root_texts)
 
-    # Save metadata
+    os.makedirs(DATA_DIR, exist_ok=True)
+    faiss.write_index(desc_index, DESC_INDEX_PATH)
+    faiss.write_index(root_index, ROOT_INDEX_PATH)
+
     with open(METADATA_PATH, "wb") as f:
         pickle.dump({"deviations": all_deviations}, f)
 
@@ -73,8 +77,9 @@ def train_model():
         reload_index()
     except Exception:
         pass
-        
-    message = f"Training completed. Rebuilt index with {len(all_deviations)} total items."
+
+    message = f"Training completed. Built 2 indices (desc + root) with {len(all_deviations)} total items."
+    print(message)
     return {"message": message, "total_vectors": len(all_deviations)}
 
 if __name__ == "__main__":

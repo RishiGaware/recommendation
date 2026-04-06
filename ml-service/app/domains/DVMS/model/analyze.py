@@ -3,77 +3,92 @@ import faiss
 import app.domains.DVMS.model.vector_store as store
 
 def analyze_text(data):
-    if store.index is None or len(store.deviations) == 0:
+    """
+    Always computes match score based on BOTH description and rootCauses:
+      - Searches desc.index  (weight: 70%)
+      - Searches root.index  (weight: 30%)
+      - Final matchScore (%) = combined weighted cosine similarity × 100
+    
+    If only description provided → rootCauses weight falls back to 0
+    If only rootCauses provided  → description weight falls back to 0
+    If both provided             → 70/30 split
+    """
+    if store.desc_index is None or len(store.deviations) == 0:
         return {"error": "Model not trained or index missing. Please run training script."}
 
-    # Extract text from structured input or fallback to string
+    description = ""
+    root_causes = ""
+
     if isinstance(data, dict):
-        text_parts = [
-            data.get("description", ""),
-            data.get("rootCauses", ""),
-            data.get("deviationType", ""),
-            data.get("deviationClassification", "")
-        ]
-        input_text = " ".join([str(p).strip() for p in text_parts if p])
+        description = str(data.get("description", "") or "").strip()
+        root_causes = str(data.get("rootCauses", "") or "").strip()
     else:
-        input_text = str(data)
+        description = str(data).strip()
 
-    if not input_text.strip():
-        return {"error": "No input text provided for analysis."}
+    if not description and not root_causes:
+        return {"error": "Provide at least a description or rootCauses for analysis."}
 
-    # Encode and normalize input
-    input_vec = store.model.encode([input_text])
-    input_vec = np.array(input_vec).astype('float32')
-    faiss.normalize_L2(input_vec)
-
-    # Search in FAISS (k=10 nearest neighbors)
     k = min(10, len(store.deviations))
-    distances, indices = store.index.search(input_vec, k)
 
-    similar = []
-    max_score = 0.0
-    if len(distances[0]) > 0:
-        max_score = float(distances[0][0])
+    def encode(text):
+        vec = store.model.encode([text])
+        vec = np.array(vec).astype("float32")
+        faiss.normalize_L2(vec)
+        return vec
 
-    # IndexFlatIP returns inner product, which is cosine similarity for normalized vectors
-    # distances are similarity scores in this case
-    for score, i in zip(distances[0], indices[0]):
-        if i == -1: continue # FAISS returns -1 if fewer than k neighbors found
-        
-        # Lower threshold for more relaxed matching
-        if score > 0.1:
-            similar.append({
-                "id": store.deviations[i]["id"],
-                "title": store.deviations[i].get("deviation_no", "Unknown"),
-                "rootCause": store.deviations[i].get("rootCauses") or "Unknown",
-                "score": float(score),
-                # Include more info if needed for frontend UI to show "why" it's similar
-                "description": store.deviations[i].get("description") or ""
+    # --- Search description index ---
+    desc_scores = {}
+    if description:
+        dists, idxs = store.desc_index.search(encode(description), k)
+        for score, i in zip(dists[0], idxs[0]):
+            if i != -1:
+                desc_scores[int(i)] = float(score)
+
+    # --- Search rootCauses index ---
+    root_scores = {}
+    if root_causes and store.root_index is not None:
+        dists, idxs = store.root_index.search(encode(root_causes), k)
+        for score, i in zip(dists[0], idxs[0]):
+            if i != -1:
+                root_scores[int(i)] = float(score)
+
+    # --- Determine weights based on what was provided ---
+    if description and root_causes:
+        desc_weight = 0.7
+        root_weight = 0.3
+    elif description:
+        desc_weight = 1.0
+        root_weight = 0.0
+    else:
+        desc_weight = 0.0
+        root_weight = 1.0
+
+    # --- Combine scores across all candidate indices ---
+    all_indices = set(desc_scores.keys()) | set(root_scores.keys())
+
+    results = []
+    for i in all_indices:
+        d_score = desc_scores.get(i, 0.0)
+        r_score = root_scores.get(i, 0.0)
+
+        combined = (d_score * desc_weight) + (r_score * root_weight)
+
+        # Only include meaningful matches (>10% similarity)
+        if combined > 0.1:
+            dev = store.deviations[i]
+            results.append({
+                "id": dev.get("id"),
+                "deviation_no": dev.get("deviation_no", ""),
+                "description": dev.get("description", ""),
+                "rootCauses": dev.get("rootCauses", ""),
+                "deviationType": dev.get("deviationType") or dev.get("deviation_type", ""),
+                "deviationClassification": dev.get("deviationClassification") or dev.get("severity", ""),
+                "matchScore": round(combined * 100, 1),   # e.g. 87.3%
             })
 
-    # Group root causes
-    cause_count = {}
-    for s in similar:
-        cause = s["rootCause"]
-        cause_count[cause] = cause_count.get(cause, 0) + 1
-
-    total = sum(cause_count.values()) or 1
-
-    possible_causes = [
-        {"name": k, "probability": round(v / total, 2)}
-        for k, v in cause_count.items()
-    ]
-
-    # Sort similar deviations by score
-    similar = sorted(similar, key=lambda x: x["score"], reverse=True)
+    results = sorted(results, key=lambda x: x["matchScore"], reverse=True)
 
     return {
-        "possibleRootCauses": possible_causes,
-        "similarDeviations": similar,
-        "explanation": f"Based on {len(similar)} semantically similar historical deviations (FAISS powered)",
-        "debug": {
-            "maxScore": max_score,
-            "totalAnalyzed": len(store.deviations),
-            "inputLength": len(input_text)
-        }
+        "similarDeviations": results,
+        "totalMatched": len(results),
     }

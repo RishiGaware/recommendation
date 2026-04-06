@@ -5,43 +5,50 @@ import app.domains.DVMS.model.vector_store as store
 
 def add_to_index(data: dict):
     """
-    Vectorizes a new deviation, adds it to the FAISS index (RAM), 
-    and persists both index and metadata to disk.
+    Vectorizes a new deviation separately for description and rootCauses,
+    adds it to BOTH FAISS indices (RAM), and persists to disk.
     """
-
-    if store.index is None:
-        # If index is missing, we must initialize a baseline index first
+    if store.desc_index is None:
         return {"error": "FAISS index not initialized. Please run training script once."}
 
-    text_parts = [
-        data.get("description", ""),
-        data.get("rootCauses", ""),
-        data.get("deviationType", ""),
-        data.get("deviationClassification", "")
-    ]
-    input_text = " ".join([str(p).strip() for p in text_parts if p])
-    
-    if not input_text.strip():
+    description = str(data.get("description", "") or "").strip()
+    root_causes = str(data.get("rootCauses", "") or "").strip()
+
+    if not description and not root_causes:
         return {"error": "No meaningful text found to vectorize."}
 
-    # Encode and normalize
-    new_vec = store.model.encode([input_text])
-    new_vec = np.array(new_vec).astype('float32')
-    faiss.normalize_L2(new_vec)
+    # Fallback: if only one is provided, use it for both
+    desc_text = description or root_causes
+    root_text = root_causes or description
 
-    # 1. Update in RAM
-    store.index.add(new_vec)
+    def encode(text):
+        vec = store.model.encode([text])
+        vec = np.array(vec).astype("float32")
+        faiss.normalize_L2(vec)
+        return vec
+
+    # Add to description index
+    store.desc_index.add(encode(desc_text))
+
+    # Add to rootCauses index (create if missing)
+    if store.root_index is None:
+        dim = store.desc_index.d
+        store.root_index = faiss.IndexFlatIP(dim)
+    store.root_index.add(encode(root_text))
+
+    # Update in-memory deviations list
     store.deviations.append(data)
 
-    # 2. Persist to Disk
+    # Persist both indices and metadata to disk
     try:
-        faiss.write_index(store.index, store.FAISS_INDEX_PATH)
+        faiss.write_index(store.desc_index, store.DESC_INDEX_PATH)
+        faiss.write_index(store.root_index, store.ROOT_INDEX_PATH)
         with open(store.METADATA_PATH, "wb") as f:
             pickle.dump({"deviations": store.deviations}, f)
-        
+
         return {
             "status": "success",
-            "message": f"Deviation '{data.get('deviation_no', 'New')}' vectorized and added to index.",
+            "message": f"Deviation '{data.get('deviation_no', 'New')}' vectorized and added to both description and rootCauses indices.",
             "total_vectors": len(store.deviations)
         }
     except Exception as e:
