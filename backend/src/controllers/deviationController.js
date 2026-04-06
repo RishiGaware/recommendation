@@ -1,10 +1,9 @@
 const fs = require("fs");
 const path = require("path");
-const { exec } = require("child_process");
-const { analyzeDeviation, addKnowledge } = require("../services/mlService");
+const { analyzeDeviation, addKnowledge, train } = require("../services/mlService");
 
 const DATA_FILE = path.join(__dirname, "../../data/custom_deviations.json");
-const TRAIN_SCRIPT = path.join(__dirname, "../../../ml-service/app/model/train.py");
+
 
 /**
  * @openapi
@@ -157,25 +156,19 @@ const createDeviation = async (req, res) => {
  *       200:
  *         description: Retraining completed
  */
-const trainModel = (req, res) => {
-  const ML_SERVICE_DIR = path.join(__dirname, "../../../ml-service");
-  
-  exec(`python -m app.model.train`, { cwd: ML_SERVICE_DIR }, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Exec error: ${error}`);
-      return res.status(500).json({ error: "Training failed", details: stderr || error.message });
+const trainModel = async (req, res) => {
+  try {
+    const result = await train();
+    res.json({ message: "Training completed successfully", output: result });
+  } catch (error) {
+    if (error.response) {
+      console.error("ML Service Error Data:", error.response.data);
     }
-    
-    try {
-      const mainPy = path.join(ML_SERVICE_DIR, "app/main.py");
-      const now = new Date();
-      fs.utimesSync(mainPy, now, now);
-    } catch (e) {
-      console.error("Failed to touch main.py:", e);
-    }
-
-    res.json({ message: "Training completed successfully", output: stdout });
-  });
+    res.status(500).json({ 
+      error: "Training failed", 
+      details: error.message 
+    });
+  }
 };
 
 module.exports = { analyze, getDeviations, createDeviation, trainModel };

@@ -2,13 +2,18 @@ const axios = require("axios");
 const { ML_SERVICE_URL } = require("../config/env");
 
 const analyzeDeviation = async (payload) => {
-  const response = await axios.post(`${ML_SERVICE_URL}/analyze`, payload);
+  const response = await axios.post(`${ML_SERVICE_URL}/DVMS/analyze`, payload);
   return response.data;
 };
 
 const addKnowledge = async (payload) => {
-  const response = await axios.post(`${ML_SERVICE_URL}/add-knowledge`, payload);
+  const response = await axios.post(`${ML_SERVICE_URL}/DVMS/add-knowledge`, payload);
   return response.data;
 };
 
-module.exports = { analyzeDeviation, addKnowledge };
+const train = async () => {
+  const response = await axios.post(`${ML_SERVICE_URL}/DVMS/train`);
+  return response.data;
+};
+
+module.exports = { analyzeDeviation, addKnowledge, train };
