@@ -207,11 +207,11 @@ function App() {
                 </div>
               ) : (
                 <>
-                  <h2 style={{ fontSize: "1.1rem", marginBottom: "15px" }}>
+                  {/* <h2 style={{ fontSize: "1.1rem", marginBottom: "15px" }}>
                     Findings
-                  </h2>
+                  </h2> */}
 
-                  <div style={{ marginBottom: "30px" }}>
+                  {/* <div style={{ marginBottom: "30px" }}>
                     <label style={{ color: "#000", fontWeight: "600" }}>
                       Root Causes
                     </label>
@@ -233,7 +233,7 @@ function App() {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </div> */}
 
                   <label style={{ color: "#000", fontWeight: "600" }}>
                     Similar Cases

@@ -64,8 +64,8 @@ def analyze_text(data):
     for score, i in zip(distances[0], indices[0]):
         if i == -1: continue # FAISS returns -1 if fewer than k neighbors found
         
-        # Higher threshold for production/requested precision
-        if score > 0.6:
+        # Lower threshold for more relaxed matching
+        if score > 0.1:
             similar.append({
                 "id": deviations[i]["id"],
                 "title": deviations[i].get("deviation_no", "Unknown"),
