@@ -34,6 +34,7 @@ def analyze_text(data):
         text_parts = [
             data.get("description", ""),
             data.get("correctionAction", ""),
+            data.get("rootCauses", ""),
             data.get("deviationType", ""),
             data.get("deviationClassification", "")
         ]
@@ -116,6 +117,7 @@ def add_to_index(data: dict):
     text_parts = [
         data.get("description", ""),
         data.get("correctionAction", ""),
+        data.get("rootCauses", ""),
         data.get("deviationType", ""),
         data.get("deviationClassification", "")
     ]

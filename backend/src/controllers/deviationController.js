@@ -32,11 +32,12 @@ const TRAIN_SCRIPT = path.join(__dirname, "../../../ml-service/app/model/train.p
  */
 const analyze = async (req, res) => {
   try {
-    const { description, correctionAction, deviationType, deviationClassification } = req.body;
+    const { description, correctionAction, rootCauses, deviationType, deviationClassification } = req.body;
     
     const result = await analyzeDeviation({ 
       description, 
       correctionAction, 
+      rootCauses,
       deviationType, 
       deviationClassification 
     });

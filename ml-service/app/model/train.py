@@ -23,7 +23,7 @@ def extract_whole_text(d):
         d.get("description", "") or "",
         d.get("deviation_type") or d.get("deviationType") or "",
         d.get("severity") or d.get("deviation_classification") or d.get("deviationClassification") or "",
-        d.get("remarks") or d.get("correction_action") or d.get("correctionAction") or ""
+        d.get("remarks") or d.get("correction_action") or d.get("correctionAction") or d.get("rootCauses", "") or ""
     ]
     
     # Add investigation approach details

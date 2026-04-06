@@ -5,6 +5,7 @@ import {
   trainModel,
 } from "./services/api";
 import { useState, useEffect } from "react";
+
 import "./App.css";
 
 function App() {
@@ -50,12 +51,19 @@ function App() {
     if (!description) return;
     setLoading(true);
     try {
-      const res = await analyzeDeviation({
+      const payload = {
         description,
-        correctionAction,
         deviationType,
         deviationClassification,
-      });
+      };
+
+      if (deviationType === "Unplanned") {
+        payload.rootCauses = correctionAction;
+      } else {
+        payload.correctionAction = correctionAction;
+      }
+
+      const res = await analyzeDeviation(payload);
       setResult(res.data);
     } catch (error) {
       console.error("Error analyzing deviation:", error);
@@ -119,13 +127,13 @@ function App() {
       </header>
 
       <nav className="nav">
-        <div 
+        <div
           className={`nav-item ${activeTab === "analyze" ? "active" : ""}`}
           onClick={() => setActiveTab("analyze")}
         >
           Analyze
         </div>
-        <div 
+        <div
           className={`nav-item ${activeTab === "manage" ? "active" : ""}`}
           onClick={() => setActiveTab("manage")}
         >
@@ -170,33 +178,43 @@ function App() {
           </div>
 
           <div className="form-group">
-            <label>Correction Action</label>
+            <label>
+              {deviationType === "Unplanned"
+                ? "Root Causes"
+                : "Correction Action"}
+            </label>
             <textarea
               style={{ height: "60px" }}
-              placeholder="Immediate action taken..."
+              placeholder={
+                deviationType === "Unplanned"
+                  ? "Root causes..."
+                  : "Immediate action taken..."
+              }
               value={correctionAction}
               onChange={(e) => setCorrectionAction(e.target.value)}
             />
           </div>
 
-          <button
-            className="btn"
-            onClick={handleAnalyze}
-            disabled={loading}
-          >
+          <button className="btn" onClick={handleAnalyze} disabled={loading}>
             {loading ? "Analyzing..." : "Generate Analysis"}
           </button>
 
           {result && (
             <div className="results-area">
               {result.error ? (
-                <div style={{ color: "red", fontSize: "0.9rem" }}>{result.error}</div>
+                <div style={{ color: "red", fontSize: "0.9rem" }}>
+                  {result.error}
+                </div>
               ) : (
                 <>
-                  <h2 style={{ fontSize: "1.1rem", marginBottom: "15px" }}>Findings</h2>
-                  
+                  <h2 style={{ fontSize: "1.1rem", marginBottom: "15px" }}>
+                    Findings
+                  </h2>
+
                   <div style={{ marginBottom: "30px" }}>
-                    <label style={{ color: "#000", fontWeight: "600" }}>Root Causes</label>
+                    <label style={{ color: "#000", fontWeight: "600" }}>
+                      Root Causes
+                    </label>
                     <div className="form-row" style={{ marginTop: "10px" }}>
                       {result.possibleRootCauses?.map((c, i) => (
                         <div key={i} className="card">
@@ -204,8 +222,8 @@ function App() {
                             <span className="card-title">{c.name}</span>
                           </div>
                           <div className="confidence-bar-bg">
-                            <div 
-                              className="confidence-bar-fill" 
+                            <div
+                              className="confidence-bar-fill"
                               style={{ width: `${c.probability * 100}%` }}
                             ></div>
                           </div>
@@ -217,16 +235,31 @@ function App() {
                     </div>
                   </div>
 
-                  <label style={{ color: "#000", fontWeight: "600" }}>Similar Cases</label>
+                  <label style={{ color: "#000", fontWeight: "600" }}>
+                    Similar Cases
+                  </label>
                   <div style={{ marginTop: "10px" }}>
                     {result.similarDeviations?.map((d) => (
                       <div key={d.id} className="card">
                         <div className="card-header">
-                          <span className="card-title" style={{ fontSize: "0.85rem" }}>{d.title}</span>
-                          <span className="card-tag">{Math.round(d.score * 100)}% Match</span>
+                          <span
+                            className="card-title"
+                            style={{ fontSize: "0.85rem" }}
+                          >
+                            {d.title}
+                          </span>
+                          <span className="card-tag">
+                            {Math.round(d.score * 100)}% Match
+                          </span>
                         </div>
                         <p className="description-box">{d.description}</p>
-                        <div style={{ fontSize: "0.75rem", marginTop: "10px", color: "#666" }}>
+                        <div
+                          style={{
+                            fontSize: "0.75rem",
+                            marginTop: "10px",
+                            color: "#666",
+                          }}
+                        >
                           <strong>Resolution:</strong> {d.rootCause}
                         </div>
                       </div>
@@ -240,7 +273,9 @@ function App() {
       ) : (
         <div className="split-view">
           <section>
-            <h2 style={{ fontSize: "1rem", marginBottom: "15px" }}>Add Knowledge</h2>
+            <h2 style={{ fontSize: "1rem", marginBottom: "15px" }}>
+              Add Knowledge
+            </h2>
             <div className="form-group">
               <label>No.</label>
               <input
@@ -260,14 +295,20 @@ function App() {
             <div className="form-row">
               <div className="form-group">
                 <label>Type</label>
-                <select value={devType} onChange={(e) => setDevType(e.target.value)}>
+                <select
+                  value={devType}
+                  onChange={(e) => setDevType(e.target.value)}
+                >
                   <option value="Unplanned">Unplanned</option>
                   <option value="Planned">Planned</option>
                 </select>
               </div>
               <div className="form-group">
                 <label>Class</label>
-                <select value={devClass} onChange={(e) => setDevClass(e.target.value)}>
+                <select
+                  value={devClass}
+                  onChange={(e) => setDevClass(e.target.value)}
+                >
                   <option value="Minor">Minor</option>
                   <option value="Major">Major</option>
                   <option value="Critical">Critical</option>
@@ -275,40 +316,75 @@ function App() {
               </div>
             </div>
             <div className="form-group">
-              <label>Resolution</label>
+              <label>
+                {devType === "Unplanned" ? "Root Causes" : "Resolution"}
+              </label>
               <input
                 value={devRemarks}
                 onChange={(e) => setDevRemarks(e.target.value)}
               />
             </div>
-            <button className="btn" onClick={handleAddDeviation} disabled={isAdding}>
+            <button
+              className="btn"
+              onClick={handleAddDeviation}
+              disabled={isAdding}
+            >
               {isAdding ? "Saving..." : "Save Entry"}
             </button>
 
-            <div style={{ marginTop: "30px", pt: "20px", borderTop: "1px solid #eee" }}>
+            <div
+              style={{
+                marginTop: "30px",
+                pt: "20px",
+                borderTop: "1px solid #eee",
+              }}
+            >
               <label>System</label>
-              <button 
-                className="btn btn-secondary" 
-                onClick={handleTrain} 
+              <button
+                className="btn btn-secondary"
+                onClick={handleTrain}
                 disabled={isTraining}
                 style={{ marginTop: "5px" }}
               >
                 {isTraining ? "Retraining..." : "Retrain Model"}
               </button>
-              {trainStatus && <p style={{ fontSize: "0.7rem", marginTop: "5px", color: "#888" }}>{trainStatus}</p>}
+              {trainStatus && (
+                <p
+                  style={{
+                    fontSize: "0.7rem",
+                    marginTop: "5px",
+                    color: "#888",
+                  }}
+                >
+                  {trainStatus}
+                </p>
+              )}
             </div>
           </section>
 
           <section>
             <div className="card-header">
-              <h2 style={{ fontSize: "1rem" }}>Datasets ({customDeviations.length})</h2>
-              <button onClick={copyToClipboard} style={{ fontSize: "0.7rem", padding: "2px 5px" }}>JSON</button>
+              <h2 style={{ fontSize: "1rem" }}>
+                Datasets ({customDeviations.length})
+              </h2>
+              <button
+                onClick={copyToClipboard}
+                style={{ fontSize: "0.7rem", padding: "2px 5px" }}
+              >
+                JSON
+              </button>
             </div>
             <div className="dataset-list">
               {customDeviations.map((d, i) => (
-                <div key={i} className="card" style={{ padding: "10px", fontSize: "0.8rem" }}>
+                <div
+                  key={i}
+                  className="card"
+                  style={{ padding: "10px", fontSize: "0.8rem" }}
+                >
                   <strong>{d.deviation_no}</strong>
-                  <p style={{ color: "#666", margin: "5px 0" }}>{d.description}</p>
+                  <p style={{ color: "#666", margin: "5px 0" }}>
+                    {d.description}
+                  </p>
                 </div>
               ))}
             </div>

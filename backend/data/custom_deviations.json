@@ -265,5 +265,15 @@
     "deviationType": "Unplanned",
     "deviationClassification": "Major",
     "created_at": "2026-04-02T15:29:34.194Z"
+  },
+  {
+    "id": 1775464013206,
+    "deviation_no": "DEV-2027-201",
+    "description": "During receiving of API bulk drums in the warehouse, multiple drums of Excipient-Y exhibited compromised security seals and dented rims. The entire shipment was moved to the quarantine cage pending QA review.",
+    "remarks": "Poor handling by the third-party freight carrier during transfer between trucks. Carrier was formally audited and issued a corrective action notice.",
+    "correctionAction": "",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "created_at": "2026-04-06T08:26:53.206Z"
   }
 ]
