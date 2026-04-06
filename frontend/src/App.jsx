@@ -308,7 +308,7 @@ function App() {
               {customDeviations.map((d, i) => (
                 <div key={i} className="card" style={{ padding: "10px", fontSize: "0.8rem" }}>
                   <strong>{d.deviation_no}</strong>
-                  <p style={{ color: "#666", margin: "5px 0" }}>{d.description?.substring(0, 50)}...</p>
+                  <p style={{ color: "#666", margin: "5px 0" }}>{d.description}</p>
                 </div>
               ))}
             </div>

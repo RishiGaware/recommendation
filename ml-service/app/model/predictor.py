@@ -64,14 +64,14 @@ def analyze_text(data):
         if i == -1: continue # FAISS returns -1 if fewer than k neighbors found
         
         # Higher threshold for production/requested precision
-        if score > 0.5:
+        if score > 0.6:
             similar.append({
                 "id": deviations[i]["id"],
                 "title": deviations[i].get("deviation_no", "Unknown"),
                 "rootCause": deviations[i].get("remarks") or "Unknown",
                 "score": float(score),
                 # Include more info if needed for frontend UI to show "why" it's similar
-                "description": (deviations[i].get("description") or "")[:200] + "..."
+                "description": deviations[i].get("description") or ""
             })
 
     # Group root causes

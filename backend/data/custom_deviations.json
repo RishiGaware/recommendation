@@ -225,5 +225,45 @@
     "deviationType": "Unplanned",
     "deviationClassification": "Critical",
     "created_at": "2026-03-27T09:07:47.005Z"
+  },
+  {
+    "id": 1775135935401,
+    "deviation_no": "DEV-2026-002",
+    "description": "Blocked HVAC filters caused insufficient air circulation, leading to temperature rise in the dispensing booth. Filters were cleaned and conditions restored.",
+    "remarks": "Blocked HVAC filters caused insufficient air circulation, leading to temperature rise in the dispensing booth. Filters were cleaned and conditions restored.",
+    "correctionAction": "",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Major",
+    "created_at": "2026-04-02T13:18:55.401Z"
+  },
+  {
+    "id": 1775136758881,
+    "deviation_no": "DEV-2026-00030",
+    "description": "During sterile filtration, a sudden drop in filtration rate was observed, causing delay in batch processing. The filter unit showed signs of clogging.",
+    "remarks": "During sterile filtration, a sudden drop in filtration rate was observed, causing delay in batch processing. The filter unit showed signs of clogging.",
+    "correctionAction": "",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Major",
+    "created_at": "2026-04-02T13:32:38.881Z"
+  },
+  {
+    "id": 1775138747956,
+    "deviation_no": "DEV-kew23",
+    "description": "One Assistant engaged in entertainment",
+    "remarks": "fired him",
+    "correctionAction": "",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Major",
+    "created_at": "2026-04-02T14:05:47.956Z"
+  },
+  {
+    "id": 1775143774194,
+    "deviation_no": "Dev- test-001",
+    "description": "during line clearence the parameter of filling machine is found to be mismatch",
+    "remarks": "scada communication failure",
+    "correctionAction": "",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Major",
+    "created_at": "2026-04-02T15:29:34.194Z"
   }
 ]
