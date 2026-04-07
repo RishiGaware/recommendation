@@ -4,7 +4,7 @@ const path = require("path");
 const {
   analyzeDeviation,
   addKnowledge,
-  train,
+  clearKnowledge,
   getQdrantStatus,
 } = require("../services/mlService");
 
@@ -37,20 +37,72 @@ const analyze = async (req, res) => {
     const { description, rootCauses, deviationType, deviationClassification } =
       req.body;
 
-    const result = await analyzeDeviation({
+    console.log("Analyzing Deviation Path Triggered...");
+    // 1. Get THIN matches from ML Service (Standardized structure)
+    const mlResponse = await analyzeDeviation({
       description,
       rootCauses,
       deviationType,
       deviationClassification,
     });
 
-    res.json(result);
-  } catch (error) {
-    if (error.response) {
-      console.error("ML Service Error Data:", error.response.data);
+    console.log("ML Service Response Status:", mlResponse?.status);
+    console.log("ML Service Response Data Count:", mlResponse?.data?.similarDeviations?.length || 0);
+
+    if (
+      !mlResponse.data ||
+      !mlResponse.data.similarDeviations ||
+      mlResponse.data.similarDeviations.length === 0
+    ) {
+      console.log("No similar deviations found by ML Service.");
+      return res.json(mlResponse);
     }
-    res.status(500).json({
-      error: "Failed to analyze deviation",
+
+    const { similarDeviations } = mlResponse.data;
+
+    // 2. Fetch FULL DATA from "Database" (currently the JSON file)
+    let allData = [];
+    if (fs.existsSync(DATA_FILE)) {
+      allData = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    }
+
+    // 3. HYDRATION: Merge SQL data with ML Match Scores
+    console.log(`Hydrating ${similarDeviations.length} matches...`);
+    const hydratedResults = similarDeviations.map((match) => {
+      // Find the full record in our database by ID
+      const fullRecord = allData.find((d) => d.id == match.id);
+
+      // Combine the textual data from DB with the AI match scores
+      if (fullRecord) {
+        return {
+          ...fullRecord,
+          matchScore: match.matchScore,
+          descriptionMatch: match.descriptionMatch,
+          rootCauseMatch: match.rootCauseMatch,
+        };
+      }
+      return match; // Fallback if record not found
+    });
+
+    // 4. Return the enriched objects to the Frontend
+    console.log("Sending Hydrated Response to Frontend.");
+    res.json({
+      ...mlResponse,
+      data: {
+        ...mlResponse.data,
+        similarDeviations: hydratedResults,
+        hydrated_from: "SSMS Mock (JSON)",
+      },
+    });
+  } catch (error) {
+    console.error("Analysis/Hydration Error:", error.message);
+    const message =
+      error.response?.data?.message ||
+      error.message ||
+      "Failed to analyze deviation (Hydration Phase)";
+    res.status(error.response?.status || 500).json({
+      status: "error",
+      message: message,
       details: error.message,
     });
   }
@@ -68,12 +120,25 @@ const analyze = async (req, res) => {
 const getDeviations = (req, res) => {
   try {
     if (!fs.existsSync(DATA_FILE)) {
-      return res.json([]);
+      return res.json({
+        status: "success",
+        message: "No deviations found",
+        data: [],
+      });
     }
     const data = fs.readFileSync(DATA_FILE, "utf-8");
-    res.json(JSON.parse(data));
+    const deviations = JSON.parse(data);
+    res.json({
+      status: "success",
+      message: "Deviations retrieved successfully",
+      data: deviations,
+    });
   } catch (error) {
-    res.status(500).json({ error: "Failed to read deviations" });
+    res.status(500).json({
+      status: "error",
+      message: "Failed to read deviations",
+      details: error.message,
+    });
   }
 };
 
@@ -105,91 +170,176 @@ const getDeviations = (req, res) => {
  */
 const createDeviation = async (req, res) => {
   try {
-    const {
-      deviation_no,
-      description,
-      rootCauses,
-      deviationType,
-      deviationClassification,
-    } = req.body;
+    const data = req.body;
+    const isBatch = Array.isArray(data);
+    const dataList = isBatch ? data : [data];
 
-    let deviations = [];
-    if (fs.existsSync(DATA_FILE)) {
-      deviations = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    if (dataList.length === 0) {
+      return res.status(400).json({
+        status: "error",
+        message: "No data provided",
+      });
     }
 
-    const newDeviation = {
-      id: Date.now(),
-      deviation_no,
-      description,
-      rootCauses,
-      deviationType,
-      deviationClassification,
-      created_at: new Date().toISOString(),
-    };
+    let existingDeviations = [];
+    if (fs.existsSync(DATA_FILE)) {
+      existingDeviations = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    }
 
-    deviations.push(newDeviation);
-    fs.writeFileSync(DATA_FILE, JSON.stringify(deviations, null, 2));
+    const processedItems = dataList.map((item) => ({
+      ...item,
+      id: item.id || Date.now() + Math.floor(Math.random() * 1000),
+      created_at: item.created_at || new Date().toISOString(),
+    }));
 
-    // Add vector to FAISS index instantly via ML service (no full retrain needed)
+    // Save to local JSON "database"
+    const updatedDeviations = [...existingDeviations, ...processedItems];
+    fs.writeFileSync(DATA_FILE, JSON.stringify(updatedDeviations, null, 2));
+
+    // Sync with ML Service (Unified endpoint handles both single and batch)
+    let mlMessage = "";
     try {
-      await addKnowledge(newDeviation);
-      console.log(`Deviation vectorized and added to index: ${deviation_no}`);
+      const mlResponse = await addKnowledge(isBatch ? processedItems : processedItems[0]);
+      mlMessage = mlResponse.message;
+      console.log("ML Sync Success:", mlMessage);
     } catch (mlError) {
-      console.error("Failed to add to ML index:", mlError.message);
+      console.error(
+        "Failed to sync with ML service:",
+        mlError.response?.data?.message || mlError.message,
+      );
+      mlMessage = "Warning: Saved locally but failed to sync with AI index.";
     }
 
-    res.status(201).json(newDeviation);
+    res.status(201).json({
+      status: "success",
+      message: isBatch 
+        ? `Successfully saved ${processedItems.length} deviations.`
+        : `Deviation '${processedItems[0].deviation_no}' saved successfully.`,
+      data: isBatch ? processedItems : processedItems[0],
+      ml_status: mlMessage
+    });
   } catch (error) {
-    res.status(500).json({ error: "Failed to save deviation" });
-  }
-};
-
-/**
- * @openapi
- * /api/deviation/train:
- *   post:
- *     summary: Trigger model retraining
- *     responses:
- *       200:
- *         description: Retraining completed
- */
-const trainModel = async (req, res) => {
-  try {
-    let deviations = [];
-    if (fs.existsSync(DATA_FILE)) {
-      deviations = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
-    }
-
-    if (deviations.length === 0) {
-      return res.status(400).json({ error: "No deviations found to train on." });
-    }
-
-    const result = await train(deviations);
-    res.json({ message: "Training completed successfully", output: result });
-  } catch (error) {
-    if (error.response) {
-      console.error("ML Service Error Data:", error.response.data);
-    }
     res.status(500).json({
-      error: "Training failed",
+      status: "error",
+      message: "Failed to process deviation(s)",
       details: error.message,
     });
   }
 };
 
+/**
+ * @openapi
+ * /api/deviation/add-knowledge:
+ *   post:
+ *     summary: Trigger deep sync repositioning all historical records into AI memory
+ *     responses:
+ *       200:
+ *         description: Sync completed
+ */
+const syncKnowledge = async (req, res) => {
+  try {
+    let deviations = [];
+    if (fs.existsSync(DATA_FILE)) {
+      deviations = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    }
+
+    console.log(`Deep Sync Triggered with ${deviations.length} records.`);
+
+    if (deviations.length === 0) {
+      return res.status(400).json({
+        status: "error", 
+        message: "No deviations found in local database to train on." 
+      });
+    }
+
+    // 1. Reset AI Index (Clear Slate)
+    console.log("Triggering Stage 1: AI Index Reset...");
+    const clearResult = await clearKnowledge();
+    if (clearResult.status !== "success") {
+      throw new Error(`Knowledge clear failed: ${clearResult.message}`);
+    }
+
+    // 2. Full Sync (Re-index everything)
+    console.log("Triggering Stage 2: Knowledge Re-indexing...");
+    const syncResult = await addKnowledge(deviations);
+    
+    if (syncResult.status !== "success") {
+      throw new Error(`Stage 2 (Sync) Failed: ${syncResult.message}`);
+    }
+
+    console.log("Full Rebuild Completed Successfully.");
+    res.json({
+      status: "success",
+      message: "Full Model Rebuild Completed Successfully.",
+      data: {
+        clear_status: clearResult.message,
+        sync_status: syncResult.message,
+        total_vectors: syncResult.data.total_vectors
+      }
+    });
+  } catch (error) {
+    console.error("Full Rebuild Error:", error.message);
+    res.status(500).json({
+      status: "error",
+      message: "Full Model Rebuild Failed",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * @openapi
+ * /api/deviation/clear-knowledge:
+ *   post:
+ *     summary: Clear all AI knowledge
+ *     responses:
+ *       200:
+ *         description: AI memory cleared
+ */
+const clearAllKnowledge = async (req, res) => {
+  try {
+    console.log("Triggering isolated AI Knowledge Clear...");
+    const result = await clearKnowledge();
+    
+    // 2. Clear Local JSON Database for a full system reset
+    if (fs.existsSync(DATA_FILE)) {
+      fs.writeFileSync(DATA_FILE, JSON.stringify([], null, 2));
+      console.log("Local deviations.json cleared.");
+    }
+
+    res.json({
+      ...result,
+      message: "AI Knowledge and Local Database cleared successfully."
+    });
+  } catch (error) {
+    console.error("Clear Knowledge Error:", error.message);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to clear AI knowledge",
+      details: error.message,
+    });
+  }
+};
+/**
+ * @openapi
+ * /api/deviation/qdrant-status:
+ *   get:
+ *     summary: Get AI engine and vector index status
+ *     responses:
+ *       200:
+ *         description: System status returned
+ */
 const getStatus = async (req, res) => {
   try {
     const result = await getQdrantStatus();
-    res.json(result);
+    res.json(result); // result already has {status, message, data}
   } catch (error) {
     console.error("Backend Error in getStatus:", error.message);
-    if (error.response) {
-      console.error("ML Service Error response:", error.response.data);
-    }
-    res
-      .status(500)
-      .json({ error: "Failed to get Qdrant status", details: error.message });
+    res.status(500).json({
+      status: "error",
+      message: "Failed to get system status",
+      details: error.message,
+    });
   }
 };
 
@@ -197,6 +347,7 @@ module.exports = {
   analyze,
   getDeviations,
   createDeviation,
-  trainModel,
+  syncKnowledge,
+  clearAllKnowledge,
   getStatus,
 };

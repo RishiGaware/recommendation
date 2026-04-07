@@ -17,7 +17,7 @@ def register_domains():
     for domain_name in os.listdir(DOMAINS_DIR):
         domain_path = os.path.join(DOMAINS_DIR, domain_name)
         
-        if os.path.isdir(domain_path):
+        if os.path.isdir(domain_path) and not domain_name.startswith('__'):
             try:
                 # Dynamically import the router from the found domain
                 # e.g., app.domains.DVMS.router
@@ -41,6 +41,12 @@ def register_domains():
 # Execute discovery on startup
 register_domains()
 
+
+from app.core.response_handler import standard_response
+
 @app.get("/health")
 def health_check():
-    return {"status": "Universal ML Service is online"}
+    return standard_response(
+        status="success",
+        message="Universal ML Service is online"
+    )

@@ -1,7 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from app.domains.DVMS.model.analyze import analyze_text
 from app.domains.DVMS.model.add_knowledge import add_to_index
-from app.domains.DVMS.model.train import train_model
+from app.core.response_handler import standard_response
 
 router = APIRouter()
 
@@ -12,15 +12,23 @@ def analyze(data: dict):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return {"error": str(e)}
+        return standard_response(
+            status="error",
+            message=str(e),
+            status_code=500
+        )
 
 @router.post("/add-knowledge")
-def add_knowledge(data: dict):
+async def add_knowledge(request: Request):
+    data = await request.json()
     return add_to_index(data)
 
-@router.post("/train")
-def train(data: list):
-    return train_model(data)
+from app.domains.DVMS.model.clear_knowledge import clear_knowledge
+
+@router.post("/clear-knowledge")
+def clear_knowledge_call():
+    """Wipes the index for a clean slate."""
+    return clear_knowledge()
 
 @router.post("/setup-db")
 def setup_db():
@@ -29,7 +37,10 @@ def setup_db():
     client = get_qdrant_client()
     client.recreate_collection(collection_name=DVMS_DESC_COLLECTION, vectors_config=VectorParams(size=384, distance=Distance.COSINE))
     client.recreate_collection(collection_name=DVMS_ROOT_COLLECTION, vectors_config=VectorParams(size=384, distance=Distance.COSINE))
-    return {"message": "Qdrant collections correctly initialized for the app."}
+    return standard_response(
+        status="success",
+        message="Qdrant collections correctly initialized for the app."
+    )
 
 @router.get("/qdrant-status")
 def get_qdrant_status():
@@ -48,13 +59,20 @@ def get_qdrant_status():
         )
         sample = res[0][0].payload if res[0] else None
         
-        return {
-            "status": "connected to local qdrant", 
-            "stored_vectors": {"dvms_desc": desc_c, "dvms_root": root_c},
-            "sample_data": sample
-        }
+        return standard_response(
+            status="success",
+            message="Connected to local qdrant", 
+            data={
+                "stored_vectors": {"dvms_desc": desc_c, "dvms_root": root_c},
+                "sample_data": sample
+            }
+        )
     except Exception as e:
-        return {"status": "error", "message": f"Collections not set up. Error: {str(e)}"}
+        return standard_response(
+            status="error", 
+            message=f"Collections not set up. Error: {str(e)}",
+            status_code=500
+        )
 
 if __name__ == "__main__":
     pass

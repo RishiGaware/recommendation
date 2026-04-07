@@ -1,7 +1,7 @@
 import {
   analyzeDeviation,
   addCustomDeviation,
-  trainModel,
+  clearKnowledge,
   getCustomDeviations,
   getQdrantStatus,
 } from "./services/api";
@@ -15,19 +15,12 @@ function App() {
   // Analyze State
   const [description, setDescription] = useState("");
   const [rootCauses, setRootCauses] = useState("");
-  const [deviationType, setDeviationType] = useState("Unplanned");
-  const [deviationClassification, setDeviationClassification] =
-    useState("Major");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
   // Manage State
   const [customDeviations, setCustomDeviations] = useState([]);
-  const [devNo, setDevNo] = useState("");
-  const [devDesc, setDevDesc] = useState("");
-  const [devRootCauses, setDevRootCauses] = useState("");
-  const [devType, setDevType] = useState("Unplanned");
-  const [devClass, setDevClass] = useState("Major");
+  const [jsonInput, setJsonInput] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [isTraining, setIsTraining] = useState(false);
   const [trainStatus, setTrainStatus] = useState("");
@@ -46,7 +39,9 @@ function App() {
   const fetchDeviations = async () => {
     try {
       const res = await getCustomDeviations();
-      setCustomDeviations(res.data);
+      if (res.data.status === "success") {
+        setCustomDeviations(res.data.data);
+      }
     } catch (error) {
       console.error("Error fetching deviations:", error);
     }
@@ -55,8 +50,14 @@ function App() {
   const fetchStatus = async () => {
     try {
       const res = await getQdrantStatus();
-      setDbStatus(res.data);
+      console.log("System Status Update:", res.data);
+      if (res.data && res.data.status === "success") {
+        setDbStatus(res.data);
+      } else {
+        setDbStatus({ status: "disconnected", message: res.data?.message });
+      }
     } catch (error) {
+      console.error("Critical System Status Error:", error);
       setDbStatus({ status: "disconnected" });
     }
   };
@@ -67,56 +68,78 @@ function App() {
     try {
       const payload = {
         description,
-        deviationType,
-        deviationClassification,
         rootCauses,
       };
 
       const res = await analyzeDeviation(payload);
-      setResult(res.data);
+      if (res.data.status === "success") {
+        setResult(res.data.data);
+      } else {
+        alert("Analysis error: " + (res.data.message || "Unknown error"));
+      }
     } catch (error) {
       console.error("Error analyzing deviation:", error);
-      alert("Analysis failed. Please check if ML service is running.");
+      const msg =
+        error.response?.data?.message ||
+        "Analysis failed. Please check if ML service is running.";
+      alert(msg);
     } finally {
       setLoading(false);
     }
   };
 
   const handleAddDeviation = async () => {
-    if (!devNo || !devDesc) return;
+    if (!jsonInput.trim()) return alert("Please provide JSON data.");
     setIsAdding(true);
     try {
-      await addCustomDeviation({
-        deviation_no: devNo,
-        description: devDesc,
-        deviationType: devType,
-        deviationClassification: devClass,
-        rootCauses: devRootCauses,
-      });
-      setDevNo("");
-      setDevDesc("");
-      setDevRootCauses("");
-      fetchDeviations();
-      setIsAdding(false);
-      alert("Deviation added to local storage!");
+      let payload;
+      try {
+        payload = JSON.parse(jsonInput);
+      } catch (parseError) {
+        setIsAdding(false);
+        return alert("Invalid JSON format: " + parseError.message);
+      }
+
+      const res = await addCustomDeviation(payload);
+
+      if (res.data.status === "success") {
+        setJsonInput("");
+        fetchDeviations();
+        setIsAdding(false);
+        alert(res.data.message);
+      } else {
+        alert("Failed to save: " + res.data.message);
+      }
     } catch (error) {
       console.error("Error adding deviation:", error);
+      alert(
+        error.response?.data?.message || "Error communicating with backend.",
+      );
     } finally {
       setIsAdding(false);
     }
   };
 
-  const handleTrain = async () => {
+  const handleClear = async () => {
+    if (
+      !window.confirm(
+        "Are you sure you want to WIPE the entire Knowledge Database (AI + Local JSON)? This is permanent.",
+      )
+    )
+    return;
     setIsTraining(true);
-    setTrainStatus("Training in progress...");
+    setTrainStatus("Clearing AI Knowledge & Local DB...");
     try {
-      await trainModel();
-      setTrainStatus("Training completed successfully!");
-      fetchStatus(); // Refresh point counts
-      alert("Model updated successfully!");
+      const res = await clearKnowledge();
+      if (res.data.status === "success") {
+        setCustomDeviations([]); // Clear UI immediately
+        setTrainStatus("System Rooted: " + res.data.message);
+        fetchStatus(); // Refresh vector counts
+        alert("System database and AI memory cleared!");
+      }
     } catch (error) {
-      setTrainStatus("Training failed.");
-      console.error("Training error:", error);
+      console.error("Clear error:", error);
+      alert(error.response?.data?.message || "Clear operation failed.");
     } finally {
       setIsTraining(false);
     }
@@ -145,13 +168,13 @@ function App() {
         <div>
           {dbStatus ? (
             <div
-              className={`status-badge ${dbStatus.status.includes("connected") ? "connected" : "disconnected"}`}
+              className={`status-badge ${dbStatus.status === "success" ? "connected" : "disconnected"}`}
             >
               <div className="status-dot"></div>
-              {dbStatus.status.includes("connected") ? (
+              {dbStatus.status === "success" ? (
                 <span>
-                  Qdrant Connected • {dbStatus.stored_vectors?.dvms_desc || 0}{" "}
-                  vectors
+                  Qdrant Connected •{" "}
+                  {dbStatus.data?.stored_vectors?.dvms_desc || 0} vectors
                 </span>
               ) : (
                 <span>Qdrant Offline</span>
@@ -180,30 +203,6 @@ function App() {
 
       {activeTab === "analyze" ? (
         <div className="section">
-          <div className="form-row">
-            <div className="form-group">
-              <label>Type</label>
-              <select
-                value={deviationType}
-                onChange={(e) => setDeviationType(e.target.value)}
-              >
-                <option value="Unplanned">Unplanned</option>
-                <option value="Planned">Planned</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Classification</label>
-              <select
-                value={deviationClassification}
-                onChange={(e) => setDeviationClassification(e.target.value)}
-              >
-                <option value="Minor">Minor</option>
-                <option value="Major">Major</option>
-                <option value="Critical">Critical</option>
-              </select>
-            </div>
-          </div>
-
           <div className="form-group">
             <label>Description</label>
             <textarea
@@ -236,34 +235,6 @@ function App() {
                 </div>
               ) : (
                 <>
-                  {/* <h2 style={{ fontSize: "1.1rem", marginBottom: "15px" }}>
-                    Findings
-                  </h2> */}
-
-                  {/* <div style={{ marginBottom: "30px" }}>
-                    <label style={{ color: "#000", fontWeight: "600" }}>
-                      Root Causes
-                    </label>
-                    <div className="form-row" style={{ marginTop: "10px" }}>
-                      {result.possibleRootCauses?.map((c, i) => (
-                        <div key={i} className="card">
-                          <div className="card-header">
-                            <span className="card-title">{c.name}</span>
-                          </div>
-                          <div className="confidence-bar-bg">
-                            <div
-                              className="confidence-bar-fill"
-                              style={{ width: `${c.probability * 100}%` }}
-                            ></div>
-                          </div>
-                          <div className="similarity-text">
-                            {Math.round(c.probability * 100)}%
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div> */}
-
                   <label style={{ color: "#000", fontWeight: "600" }}>
                     Similar Cases
                     {result.searchMode && (
@@ -377,87 +348,78 @@ function App() {
       ) : (
         <div className="split-view">
           <section>
-            <h2 style={{ fontSize: "1rem", marginBottom: "15px" }}>
-              Add Knowledge
-            </h2>
-            <div className="form-group">
-              <label>No.</label>
-              <input
-                placeholder="DEV-001"
-                value={devNo}
-                onChange={(e) => setDevNo(e.target.value)}
-              />
+            <div className="card-header">
+              <h2 style={{ fontSize: "1rem" }}>Add Knowledge (JSON)</h2>
+              <span style={{ fontSize: "0.7rem", color: "#888" }}>
+                Supports single or bulk array
+              </span>
             </div>
-            <div className="form-group">
-              <label>Description</label>
+
+            <div className="form-group" style={{ marginTop: "10px" }}>
+              <label>JSON Data</label>
               <textarea
-                style={{ height: "60px" }}
-                value={devDesc}
-                onChange={(e) => setDevDesc(e.target.value)}
+                style={{
+                  height: "200px",
+                  fontFamily: "monospace",
+                  fontSize: "0.8rem",
+                }}
+                placeholder='[ { "deviation_no": "DEV-001", "description": "...", "rootCauses": "..." } ]'
+                value={jsonInput}
+                onChange={(e) => setJsonInput(e.target.value)}
               />
+              <p style={{ fontSize: "0.65rem", color: "#666" }}>
+                Required: <strong>id</strong> (or auto-gen),{" "}
+                <strong>description</strong>, <strong>rootCauses</strong>
+              </p>
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Type</label>
-                <select
-                  value={devType}
-                  onChange={(e) => setDevType(e.target.value)}
-                >
-                  <option value="Unplanned">Unplanned</option>
-                  <option value="Planned">Planned</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Class</label>
-                <select
-                  value={devClass}
-                  onChange={(e) => setDevClass(e.target.value)}
-                >
-                  <option value="Minor">Minor</option>
-                  <option value="Major">Major</option>
-                  <option value="Critical">Critical</option>
-                </select>
-              </div>
-            </div>
-            <div className="form-group">
-              <label>Root Causes</label>
-              <input
-                value={devRootCauses}
-                onChange={(e) => setDevRootCauses(e.target.value)}
-              />
-            </div>
+
             <button
               className="btn"
               onClick={handleAddDeviation}
               disabled={isAdding}
             >
-              {isAdding ? "Saving..." : "Save Entry"}
+              {isAdding ? "Saving..." : "Add Knowledge"}
             </button>
 
             <div
               style={{
                 marginTop: "30px",
-                pt: "20px",
+                paddingTop: "20px",
                 borderTop: "1px solid #eee",
               }}
             >
-              <label>System</label>
+              <h3
+                style={{
+                  fontSize: "0.85rem",
+                  color: "#666",
+                  marginBottom: "15px",
+                }}
+              >
+                Database Actions
+              </h3>
               <div style={{ marginTop: "10px" }}>
                 <button
                   className="btn btn-secondary"
-                  onClick={handleTrain}
+                  onClick={handleClear}
                   disabled={isTraining}
-                  style={{ width: "100%", fontSize: "0.8rem" }}
+                  style={{
+                    width: "100%",
+                    fontSize: "0.8rem",
+                    backgroundColor: "rgba(239, 68, 68, 0.1)",
+                    borderColor: "rgba(239, 68, 68, 0.3)",
+                    color: "#ef4444",
+                  }}
                 >
-                  {isTraining ? "Processing..." : "Train Model"}
+                  {isTraining ? "Clearing..." : "Clear knowledge database"}
                 </button>
               </div>
               {trainStatus && (
                 <p
                   style={{
                     fontSize: "0.7rem",
-                    marginTop: "5px",
+                    marginTop: "8px",
                     color: "#888",
+                    textAlign: "center",
                   }}
                 >
                   {trainStatus}
