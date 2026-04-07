@@ -34,7 +34,9 @@ def register_domains():
                 else:
                     print(f"Skipping [{domain_name}]: No 'router' object found in {module_path}")
             except Exception as e:
+                import traceback
                 print(f"Error loading domain [{domain_name}]: {e}")
+                traceback.print_exc()
 
 # Execute discovery on startup
 register_domains()

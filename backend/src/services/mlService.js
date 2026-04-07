@@ -16,4 +16,9 @@ const train = async () => {
   return response.data;
 };
 
-module.exports = { analyzeDeviation, addKnowledge, train };
+const getQdrantStatus = async () => {
+  const response = await axios.get(`${ML_SERVICE_URL}/DVMS/qdrant-status`);
+  return response.data;
+};
+
+module.exports = { analyzeDeviation, addKnowledge, train, getQdrantStatus };

@@ -265,5 +265,32 @@
     "deviationType": "Unplanned",
     "deviationClassification": "Major",
     "created_at": "2026-04-06T12:49:26.946Z"
+  },
+  {
+    "id": 1775544572320,
+    "deviation_no": "TEST-DEV-SEMANTIC",
+    "description": "Water leakage observed from the ceiling in Area A-101.",
+    "rootCauses": "Damaged water pipe due to corrosion.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Major",
+    "created_at": "2026-04-07T06:49:32.320Z"
+  },
+  {
+    "id": 1775546399226,
+    "deviation_no": "DEV-SEM-SIGN-2026",
+    "description": "Omission of mandatory technician signatures in the manufacturing logbooks during the tablet compression stage.",
+    "rootCauses": "Personnel exhaustion during transition between night and morning shifts; inadequate supervisory review.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Major",
+    "created_at": "2026-04-07T07:19:59.226Z"
+  },
+  {
+    "id": 1775546511467,
+    "deviation_no": "DEV_new-sem",
+    "description": "Operator failed to sign the batch manufacturing record (BMR) for the granulation step in real-time.",
+    "rootCauses": "High workload during shift change and lack of oversight by the supervisor.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Major",
+    "created_at": "2026-04-07T07:21:51.467Z"
   }
 ]

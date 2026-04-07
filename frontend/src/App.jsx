@@ -3,6 +3,7 @@ import {
   addCustomDeviation,
   trainModel,
   getCustomDeviations,
+  getQdrantStatus,
 } from "./services/api";
 import { useState, useEffect } from "react";
 
@@ -30,6 +31,11 @@ function App() {
   const [isAdding, setIsAdding] = useState(false);
   const [isTraining, setIsTraining] = useState(false);
   const [trainStatus, setTrainStatus] = useState("");
+  const [dbStatus, setDbStatus] = useState(null);
+
+  useEffect(() => {
+    fetchStatus();
+  }, []);
 
   useEffect(() => {
     if (activeTab === "manage") {
@@ -43,6 +49,15 @@ function App() {
       setCustomDeviations(res.data);
     } catch (error) {
       console.error("Error fetching deviations:", error);
+    }
+  };
+
+  const fetchStatus = async () => {
+    try {
+      const res = await getQdrantStatus();
+      setDbStatus(res.data);
+    } catch (error) {
+      setDbStatus({ status: "disconnected" });
     }
   };
 
@@ -97,6 +112,7 @@ function App() {
     try {
       await trainModel();
       setTrainStatus("Training completed successfully!");
+      fetchStatus(); // Refresh point counts
       alert("Model updated successfully!");
     } catch (error) {
       setTrainStatus("Training failed.");
@@ -114,9 +130,37 @@ function App() {
 
   return (
     <div className="app-container">
-      <header className="header">
-        <h1>input</h1>
-        <p>Analysis & Knowledge</p>
+      <header
+        className="header"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
+        <div>
+          <h1>input</h1>
+          <p>Analysis & Knowledge</p>
+        </div>
+        <div>
+          {dbStatus ? (
+            <div
+              className={`status-badge ${dbStatus.status.includes("connected") ? "connected" : "disconnected"}`}
+            >
+              <div className="status-dot"></div>
+              {dbStatus.status.includes("connected") ? (
+                <span>
+                  Qdrant Connected • {dbStatus.stored_vectors?.dvms_desc || 0}{" "}
+                  vectors
+                </span>
+              ) : (
+                <span>Qdrant Offline</span>
+              )}
+            </div>
+          ) : (
+            <div className="status-badge">Checking connection...</div>
+          )}
+        </div>
       </header>
 
       <nav className="nav">

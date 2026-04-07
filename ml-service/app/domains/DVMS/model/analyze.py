@@ -1,20 +1,22 @@
-import numpy as np
-import faiss
-import app.domains.DVMS.model.vector_store as store
+from app.db.qdrant import client, DVMS_DESC_COLLECTION, DVMS_ROOT_COLLECTION
+from app.core.model_manager import get_shared_model
+
+model = get_shared_model()
 
 def analyze_text(data):
     """
-    Always computes match score based on BOTH description and rootCauses:
-      - Searches desc.index  (weight: 70%)
-      - Searches root.index  (weight: 30%)
+    Always computes match score based on BOTH description and rootCauses using Qdrant:
+      - Searches dvms_desc  (weight: 70%)
+      - Searches dvms_root  (weight: 30%)
       - Final matchScore (%) = combined weighted cosine similarity × 100
-    
-    If only description provided → rootCauses weight falls back to 0
-    If only rootCauses provided  → description weight falls back to 0
-    If both provided             → 70/30 split
     """
-    if store.desc_index is None or len(store.deviations) == 0:
-        return {"error": "Model not trained or index missing. Please run training script."}
+    try:
+        # Check if collections exist / are populated by requesting count
+        desc_count = client.count(DVMS_DESC_COLLECTION).count
+        if desc_count == 0:
+            return {"error": "Model not trained or qdrant storage is empty. Please run training script."}
+    except Exception as e:
+        return {"error": f"Error connecting to Qdrant: {str(e)}"}
 
     description = ""
     root_causes = ""
@@ -28,67 +30,97 @@ def analyze_text(data):
     if not description and not root_causes:
         return {"error": "Provide at least a description or rootCauses for analysis."}
 
-    k = min(10, len(store.deviations))
+    k = min(10, desc_count)
 
-    def encode(text):
-        vec = store.model.encode([text])
-        vec = np.array(vec).astype("float32")
-        faiss.normalize_L2(vec)
-        return vec
+    def search_qdrant(collection, text, limit=10):
+        # Generate vector for the text
+        vec = model.encode([text])[0].tolist()
+        
+        # Determine the correct search method available on the client
+        # In current qdrant-client sync mode, it should be '.search'
+        if hasattr(client, "search"):
+            return client.search(
+                collection_name=collection,
+                query_vector=vec,
+                limit=limit,
+                with_payload=True
+            )
+        elif hasattr(client, "query_points"):
+            # New v1.11+ API if search is unavailable
+            return client.query_points(
+                collection_name=collection,
+                query=vec,
+                limit=limit,
+                with_payload=True
+            ).points
+        else:
+            raise AttributeError(f"QdrantClient object has neither 'search' nor 'query_points'. Available methods: {dir(client)}")
 
-    # --- Search description index ---
-    desc_scores = {}
-    if description:
-        dists, idxs = store.desc_index.search(encode(description), k)
-        for score, i in zip(dists[0], idxs[0]):
-            if i != -1:
-                desc_scores[int(i)] = float(score)
+    try:
+        # --- Search description collection ---
+        desc_scores = {}
+        if description:
+            results = search_qdrant(DVMS_DESC_COLLECTION, description, limit=k)
+            for r in results:
+                desc_scores[r.id] = {"score": r.score, "payload": r.payload}
 
-    # --- Search rootCauses index ---
-    root_scores = {}
-    if root_causes and store.root_index is not None:
-        dists, idxs = store.root_index.search(encode(root_causes), k)
-        for score, i in zip(dists[0], idxs[0]):
-            if i != -1:
-                root_scores[int(i)] = float(score)
+        # --- Search rootCauses collection ---
+        root_scores = {}
+        if root_causes:
+            results = search_qdrant(DVMS_ROOT_COLLECTION, root_causes, limit=k)
+            for r in results:
+                root_scores[r.id] = {"score": r.score, "payload": r.payload}
 
-    # --- Determine weights based on what was provided ---
-    if description and root_causes:
-        desc_weight = 0.7
-        root_weight = 0.3
-    elif description:
-        desc_weight = 1.0
-        root_weight = 0.0
-    else:
-        desc_weight = 0.0
-        root_weight = 1.0
+        # --- Determine weights ---
+        if description and root_causes:
+            desc_weight = 0.7
+            root_weight = 0.3
+        elif description:
+            desc_weight = 1.0
+            root_weight = 0.0
+        else:
+            desc_weight = 0.0
+            root_weight = 1.0
 
-    # --- Combine scores across all candidate indices ---
-    all_indices = set(desc_scores.keys()) | set(root_scores.keys())
+        # --- Combine scores across all candidate results ---
+        all_indices = set(desc_scores.keys()) | set(root_scores.keys())
 
-    results = []
-    for i in all_indices:
-        d_score = desc_scores.get(i, 0.0)
-        r_score = root_scores.get(i, 0.0)
+        results = []
+        for point_id in all_indices:
+            d_data = desc_scores.get(point_id, {})
+            r_data = root_scores.get(point_id, {})
+            
+            d_score = d_data.get("score", 0.0)
+            r_score = r_data.get("score", 0.0)
 
-        combined = (d_score * desc_weight) + (r_score * root_weight)
+            # Combined weighted score
+            combined = (d_score * desc_weight) + (r_score * root_weight)
 
-        # Only include meaningful matches (>10% similarity)
-        if combined > 0.1:
-            dev = store.deviations[i]
-            results.append({
-                "id": dev.get("id"),
-                "deviation_no": dev.get("deviation_no", ""),
-                "description": dev.get("description", ""),
-                "rootCauses": dev.get("rootCauses", ""),
-                "deviationType": dev.get("deviationType") or dev.get("deviation_type", ""),
-                "deviationClassification": dev.get("deviationClassification") or dev.get("severity", ""),
-                "matchScore": round(combined * 100, 1),   # e.g. 87.3%
-            })
+            # Threshold for meaningful results
+            if combined > 0.1:
+                # Merge payload data (should be identical since they use the same IDs)
+                payload = d_data.get("payload") or r_data.get("payload")
+                
+                if payload:
+                    results.append({
+                        "id": payload.get("id"),
+                        "deviation_no": payload.get("deviation_no", ""),
+                        "description": payload.get("description", ""),
+                        "rootCauses": payload.get("rootCauses", ""),
+                        "deviationType": payload.get("deviationType") or payload.get("deviation_type", ""),
+                        "deviationClassification": payload.get("deviationClassification") or payload.get("severity", ""),
+                        "matchScore": round(float(combined) * 100, 1),
+                    })
 
-    results = sorted(results, key=lambda x: x["matchScore"], reverse=True)
+        # Sort by best match score
+        results = sorted(results, key=lambda x: x["matchScore"], reverse=True)
 
-    return {
-        "similarDeviations": results,
-        "totalMatched": len(results),
-    }
+        return {
+            "similarDeviations": results,
+            "totalMatched": len(results),
+            "searchMode": "description+rootCauses" if description and root_causes else ("description" if description else "rootCauses")
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": f"Internal Analysis Error: {str(e)}"}

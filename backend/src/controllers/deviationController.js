@@ -5,6 +5,7 @@ const {
   analyzeDeviation,
   addKnowledge,
   train,
+  getQdrantStatus,
 } = require("../services/mlService");
 
 const DATA_FILE = path.join(__dirname, "../../data/deviations.json");
@@ -168,4 +169,17 @@ const trainModel = async (req, res) => {
   }
 };
 
-module.exports = { analyze, getDeviations, createDeviation, trainModel };
+const getStatus = async (req, res) => {
+  try {
+    const result = await getQdrantStatus();
+    res.json(result);
+  } catch (error) {
+    console.error("Backend Error in getStatus:", error.message);
+    if (error.response) {
+      console.error("ML Service Error response:", error.response.data);
+    }
+    res.status(500).json({ error: "Failed to get Qdrant status", details: error.message });
+  }
+};
+
+module.exports = { analyze, getDeviations, createDeviation, trainModel, getStatus };

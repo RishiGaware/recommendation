@@ -3,3 +3,4 @@ uvicorn
 scikit-learn
 numpy
 sentence-transformers
+qdrant-client
