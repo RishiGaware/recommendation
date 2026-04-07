@@ -19,8 +19,8 @@ def add_to_index(data: dict):
             return {"error": "No meaningful text found to vectorize."}
 
         # Fallback logic
-        desc_text = description or root_causes
-        root_text = root_causes or description
+        description_text = description or root_causes
+        root_cause_text = root_causes or description
 
         # Qdrant IDs must be 64-bit ints or UUIDs
         point_id_raw = data.get("id")
@@ -30,25 +30,25 @@ def add_to_index(data: dict):
             point_id = int(time.time() * 1000)
 
         # 1. Vectorize description
-        desc_vec = model.encode([desc_text])[0].tolist()
+        description_vector = model.encode([description_text])[0].tolist()
         client.upsert(
             collection_name=DVMS_DESC_COLLECTION,
-            points=[PointStruct(id=point_id, vector=desc_vec, payload=data)]
+            points=[PointStruct(id=point_id, vector=description_vector, payload=data)]
         )
 
         # 2. Vectorize root causes
-        root_vec = model.encode([root_text])[0].tolist()
+        root_cause_vector = model.encode([root_cause_text])[0].tolist()
         client.upsert(
             collection_name=DVMS_ROOT_COLLECTION,
-            points=[PointStruct(id=point_id, vector=root_vec, payload=data)]
+            points=[PointStruct(id=point_id, vector=root_cause_vector, payload=data)]
         )
 
-        count_res = client.count(collection_name=DVMS_DESC_COLLECTION)
+        count_result = client.count(collection_name=DVMS_DESC_COLLECTION)
         
         return {
             "status": "success",
             "message": f"Deviation '{data.get('deviation_no')}' indexed instantly.",
-            "total_vectors": count_res.count
+            "total_vectors": count_result.count
         }
     except Exception as e:
         import traceback

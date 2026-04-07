@@ -21,19 +21,19 @@ def peek_qdrant():
             print("No collections found.")
             return
 
-        for coll in collections:
-            name = coll.name
-            count = client.count(name).count
-            print(f"\n[Collection: {name}] ({count} vectors)")
+        for collection_info in collections:
+            collection_name = collection_info.name
+            vector_count = client.count(collection_name).count
+            print(f"\n[Collection: {collection_name}] ({vector_count} vectors)")
             
             # Scroll to see valid payload samples
-            res = client.scroll(collection_name=name, limit=10, with_payload=True)
-            points = res[0]
+            scroll_result = client.scroll(collection_name=collection_name, limit=10, with_payload=True)
+            batch_points = scroll_result[0]
             
-            for p in points:
-                dev_no = p.payload.get("deviation_no", "N/A")
-                desc = p.payload.get("description", "N/A")[:60]
-                print(f" - ID {p.id}: [{dev_no}] {desc}...")
+            for point in batch_points:
+                deviation_number = point.payload.get("deviation_no", "N/A")
+                short_description = point.payload.get("description", "N/A")[:60]
+                print(f" - ID {point.id}: [{deviation_number}] {short_description}...")
                 
     except Exception as e:
         if "already used by another process" in str(e):

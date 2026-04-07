@@ -58,18 +58,18 @@ def analyze_text(data):
 
     try:
         # --- Search description collection ---
-        desc_scores = {}
+        description_scores = {}
         if description:
             results = search_qdrant(DVMS_DESC_COLLECTION, description, limit=k)
             for r in results:
-                desc_scores[r.id] = {"score": r.score, "payload": r.payload}
+                description_scores[r.id] = {"score": r.score, "payload": r.payload}
 
         # --- Search rootCauses collection ---
-        root_scores = {}
+        root_cause_scores = {}
         if root_causes:
             results = search_qdrant(DVMS_ROOT_COLLECTION, root_causes, limit=k)
             for r in results:
-                root_scores[r.id] = {"score": r.score, "payload": r.payload}
+                root_cause_scores[r.id] = {"score": r.score, "payload": r.payload}
 
         # --- Determine weights ---
         if description and root_causes:
@@ -83,23 +83,23 @@ def analyze_text(data):
             root_weight = 1.0
 
         # --- Combine scores across all candidate results ---
-        all_indices = set(desc_scores.keys()) | set(root_scores.keys())
+        all_indices = set(description_scores.keys()) | set(root_cause_scores.keys())
 
         results = []
         for point_id in all_indices:
-            d_data = desc_scores.get(point_id, {})
-            r_data = root_scores.get(point_id, {})
+            description_data = description_scores.get(point_id, {})
+            root_cause_data = root_cause_scores.get(point_id, {})
             
-            d_score = d_data.get("score", 0.0)
-            r_score = r_data.get("score", 0.0)
+            description_score = description_data.get("score", 0.0)
+            root_cause_score = root_cause_data.get("score", 0.0)
 
-            # Combined weighted score
-            combined = (d_score * desc_weight) + (r_score * root_weight)
+            # Combined weighted score (still used for sorting priority)
+            combined = (description_score * desc_weight) + (root_cause_score * root_weight)
 
-            # Threshold for meaningful results
-            if combined > 0.1:
-                # Merge payload data (should be identical since they use the same IDs)
-                payload = d_data.get("payload") or r_data.get("payload")
+            # --- NEW Logic: Include if EITHER field is a strong match (>35%) ---
+            threshold = 0.35
+            if description_score >= threshold or root_cause_score >= threshold or combined >= threshold:
+                payload = description_data.get("payload") or root_cause_data.get("payload")
                 
                 if payload:
                     results.append({
@@ -109,16 +109,20 @@ def analyze_text(data):
                         "rootCauses": payload.get("rootCauses", ""),
                         "deviationType": payload.get("deviationType") or payload.get("deviation_type", ""),
                         "deviationClassification": payload.get("deviationClassification") or payload.get("severity", ""),
+                        # Percentages
                         "matchScore": round(float(combined) * 100, 1),
+                        "descriptionMatch": round(float(description_score) * 100, 1),
+                        "rootCauseMatch": round(float(root_cause_score) * 100, 1)
                     })
 
-        # Sort by best match score
+        # Sort by best overall match score
         results = sorted(results, key=lambda x: x["matchScore"], reverse=True)
 
         return {
             "similarDeviations": results,
             "totalMatched": len(results),
-            "searchMode": "description+rootCauses" if description and root_causes else ("description" if description else "rootCauses")
+            "searchMode": "description+rootCauses" if description and root_causes else ("description" if description else "rootCauses"),
+            "threshold": threshold * 100
         }
     except Exception as e:
         import traceback

@@ -40,26 +40,27 @@ def train_model():
     if not all_deviations:
         return {"error": "No deviations found to train on."}
 
-    desc_points = []
-    root_points = []
+    description_points = []
+    root_cause_points = []
     
     # Process batches rather than single elements if possible, or just generate list
-    for idx, dev in enumerate(all_deviations):
-        dev_id = int(dev.get("id", idx))
+    for idx, deviation in enumerate(all_deviations):
+        # Qdrant IDs must be 64-bit ints or UUIDs
+        deviation_id = int(deviation.get("id", idx))
 
-        desc_text = safe_text(dev.get("description"))
-        root_text = safe_text(dev.get("rootCauses")) or desc_text
+        description_text = safe_text(deviation.get("description"))
+        root_cause_text = safe_text(deviation.get("rootCauses")) or description_text
         
-        desc_vec = model.encode([desc_text])[0].tolist()
-        root_vec = model.encode([root_text])[0].tolist()
+        description_vector = model.encode([description_text])[0].tolist()
+        root_cause_vector = model.encode([root_cause_text])[0].tolist()
         
-        desc_points.append(PointStruct(id=dev_id, vector=desc_vec, payload=dev))
-        root_points.append(PointStruct(id=dev_id, vector=root_vec, payload=dev))
+        description_points.append(PointStruct(id=deviation_id, vector=description_vector, payload=deviation))
+        root_cause_points.append(PointStruct(id=deviation_id, vector=root_cause_vector, payload=deviation))
 
     # Upsert batches to Qdrant (you can chunk it if it's large)
     try:
-        client.upsert(collection_name=DVMS_DESC_COLLECTION, points=desc_points)
-        client.upsert(collection_name=DVMS_ROOT_COLLECTION, points=root_points)
+        client.upsert(collection_name=DVMS_DESC_COLLECTION, points=description_points)
+        client.upsert(collection_name=DVMS_ROOT_COLLECTION, points=root_cause_points)
     except Exception as e:
         print(f"Failed to upsert vectors to Qdrant: {e}")
         return {"error": str(e)}
