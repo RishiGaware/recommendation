@@ -27,17 +27,19 @@ def analyze_text(payload: dict):
         )
 
     # --- 1. Intelligent Weighting Logic ---
-    # We bias towards description for general context, root causes for technical precision
-    description_weight = 1.2
-    root_cause_weight = 0.8
     match_threshold = 35.0
 
-    mode = "both"
-    if input_description and not input_root_causes: 
+    if input_description and input_root_causes:
+        mode = "both"
+        description_weight = 1.2
+        root_cause_weight = 0.8
+    elif input_description:
         mode = "description_only"
         description_weight = 1.0
-    elif input_root_causes and not input_description: 
+        root_cause_weight = 0.0
+    else:
         mode = "root_causes_only"
+        description_weight = 0.0
         root_cause_weight = 1.0
 
     try:
@@ -108,7 +110,9 @@ def analyze_text(payload: dict):
             data={
                 "similarDeviations": sorted_results[:10],
                 "searchMode": mode,
-                "threshold": match_threshold
+                "threshold": match_threshold,
+                "description_weight": description_weight,
+                "root_weight": root_cause_weight
             }
         )
 

@@ -63,7 +63,7 @@ function App() {
   };
 
   const handleAnalyze = async () => {
-    if (!description) return;
+    if (!description.trim() && !rootCauses.trim()) return;
     setLoading(true);
     try {
       const payload = {
