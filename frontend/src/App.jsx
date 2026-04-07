@@ -279,6 +279,33 @@ function App() {
                       </span>
                     )}
                   </label>
+
+                  {/* --- NEW: Dynamic Weights Info --- */}
+                  {result.description_weight !== undefined && (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "10px",
+                        fontSize: "0.7rem",
+                        marginTop: "5px",
+                        color: "#666",
+                        background: "#f8f9fa",
+                        padding: "4px 8px",
+                        borderRadius: "4px",
+                        width: "fit-content",
+                      }}
+                    >
+                      <span>
+                        <strong>Desc Weight:</strong>{" "}
+                        {Math.round(result.description_weight * 100)}%
+                      </span>
+                      <span>
+                        <strong>RC Weight:</strong>{" "}
+                        {Math.round(result.root_weight * 100)}%
+                      </span>
+                    </div>
+                  )}
+
                   <div style={{ marginTop: "10px" }}>
                     {result.similarDeviations?.map((d) => (
                       <div key={d.id} className="card">
@@ -293,6 +320,41 @@ function App() {
                             {d.matchScore}% Match
                           </span>
                         </div>
+
+                        {/* --- NEW: Separate Percentages Badges --- */}
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "8px",
+                            marginBottom: "10px",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: "0.65rem",
+                              background: "#e3f2fd",
+                              color: "#1565c0",
+                              padding: "2px 6px",
+                              borderRadius: "10px",
+                              fontWeight: "600",
+                            }}
+                          >
+                            Desc: {d.descriptionMatch}%
+                          </span>
+                          <span
+                            style={{
+                              fontSize: "0.65rem",
+                              background: "#f3e5f5",
+                              color: "#7b1fa2",
+                              padding: "2px 6px",
+                              borderRadius: "10px",
+                              fontWeight: "600",
+                            }}
+                          >
+                            RC: {d.rootCauseMatch}%
+                          </span>
+                        </div>
+
                         <p className="description-box">{d.description}</p>
                         <div
                           style={{

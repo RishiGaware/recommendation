@@ -19,21 +19,23 @@ def add_knowledge(data: dict):
     return add_to_index(data)
 
 @router.post("/train")
-def train():
-    return train_model()
+def train(data: list):
+    return train_model(data)
 
 @router.post("/setup-db")
 def setup_db():
     from qdrant_client.models import VectorParams, Distance
-    from app.db.qdrant import client, DVMS_DESC_COLLECTION, DVMS_ROOT_COLLECTION
+    from app.db.qdrant import get_qdrant_client, DVMS_DESC_COLLECTION, DVMS_ROOT_COLLECTION
+    client = get_qdrant_client()
     client.recreate_collection(collection_name=DVMS_DESC_COLLECTION, vectors_config=VectorParams(size=384, distance=Distance.COSINE))
     client.recreate_collection(collection_name=DVMS_ROOT_COLLECTION, vectors_config=VectorParams(size=384, distance=Distance.COSINE))
     return {"message": "Qdrant collections correctly initialized for the app."}
 
 @router.get("/qdrant-status")
 def get_qdrant_status():
-    from app.db.qdrant import client, DVMS_DESC_COLLECTION, DVMS_ROOT_COLLECTION
+    from app.db.qdrant import get_qdrant_client, DVMS_DESC_COLLECTION, DVMS_ROOT_COLLECTION
     try:
+        client = get_qdrant_client()
         desc_c = client.count(DVMS_DESC_COLLECTION).count
         root_c = client.count(DVMS_ROOT_COLLECTION).count
         

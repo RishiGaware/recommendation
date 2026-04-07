@@ -156,7 +156,16 @@ const createDeviation = async (req, res) => {
  */
 const trainModel = async (req, res) => {
   try {
-    const result = await train();
+    let deviations = [];
+    if (fs.existsSync(DATA_FILE)) {
+      deviations = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    }
+
+    if (deviations.length === 0) {
+      return res.status(400).json({ error: "No deviations found to train on." });
+    }
+
+    const result = await train(deviations);
     res.json({ message: "Training completed successfully", output: result });
   } catch (error) {
     if (error.response) {
@@ -178,8 +187,16 @@ const getStatus = async (req, res) => {
     if (error.response) {
       console.error("ML Service Error response:", error.response.data);
     }
-    res.status(500).json({ error: "Failed to get Qdrant status", details: error.message });
+    res
+      .status(500)
+      .json({ error: "Failed to get Qdrant status", details: error.message });
   }
 };
 
-module.exports = { analyze, getDeviations, createDeviation, trainModel, getStatus };
+module.exports = {
+  analyze,
+  getDeviations,
+  createDeviation,
+  trainModel,
+  getStatus,
+};

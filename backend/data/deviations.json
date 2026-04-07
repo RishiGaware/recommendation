@@ -292,5 +292,23 @@
     "deviationType": "Unplanned",
     "deviationClassification": "Major",
     "created_at": "2026-04-07T07:21:51.467Z"
+  },
+  {
+    "id": 1775556242536,
+    "deviation_no": "QA-DEV-2025-RH9",
+    "description": "RH (Relative Humidity) in the warehouse exceeded the 65% limit for a continuous period of 5 hours due to a faulty dehumidifier sensor.",
+    "rootCauses": "Defective dehumidifier sensor and lack of preventive maintenance on HVAC unit.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Major",
+    "created_at": "2026-04-07T10:04:02.536Z"
+  },
+  {
+    "id": 1775556543160,
+    "deviation_no": "QA-DEV-2025-TMP7",
+    "description": "The storage area temperature rose above 25°C for approximately 3 hours due to intermittent chiller failure affecting environmental control conditions.",
+    "rootCauses": "Chiller unit malfunction caused by compressor failure and inadequate preventive maintenance.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Major",
+    "created_at": "2026-04-07T10:09:03.160Z"
   }
 ]

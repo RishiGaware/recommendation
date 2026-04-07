@@ -1,6 +1,6 @@
 import time
 from qdrant_client.models import PointStruct
-from app.db.qdrant import client, DVMS_DESC_COLLECTION, DVMS_ROOT_COLLECTION
+from app.db.qdrant import get_qdrant_client, DVMS_DESC_COLLECTION, DVMS_ROOT_COLLECTION
 from app.core.model_manager import get_shared_model
 
 # Shared state between API calls
@@ -11,6 +11,7 @@ def add_to_index(data: dict):
     Vectorizes a new deviation separately for description and rootCauses,
     adds it to BOTH Qdrant collections.
     """
+    client = get_qdrant_client()
     try:
         description = str(data.get("description", "") or "").strip()
         root_causes = str(data.get("rootCauses", "") or "").strip()
