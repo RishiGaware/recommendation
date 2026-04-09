@@ -67,7 +67,7 @@ public class MLServiceClient
     private readonly HttpClient _httpClient;
 
     // Replace "localhost" with your server's IP address if the .NET app is on a different machine
-    private const string MlServiceUrl = "http://localhost:8000/api/analyze";
+    private const string MlServiceUrl = "http://localhost:8000/ml-service/DVMS/analyze";
 
     public MLServiceClient()
     {

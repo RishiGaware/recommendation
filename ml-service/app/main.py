@@ -1,8 +1,17 @@
 import os
 import importlib
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Universal ML Service Core")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # For development, allowing all. Change to specific origin in production.
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # --- Universal Domain Auto-Discovery ---
 DOMAINS_DIR = os.path.join(os.path.dirname(__file__), "domains")
@@ -25,10 +34,10 @@ def register_domains():
                 domain_module = importlib.import_module(module_path)
                 
                 if hasattr(domain_module, "router"):
-                    print(f"Mounting Domain -> [{domain_name}] at /api/{domain_name}")
+                    print(f"Mounting Domain -> [{domain_name}] at /ml-service/{domain_name}")
                     app.include_router(
                         domain_module.router, 
-                        prefix=f"/api/{domain_name}", 
+                        prefix=f"/ml-service/{domain_name}", 
                         tags=[domain_name]
                     )
                 else:

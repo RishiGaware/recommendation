@@ -27,7 +27,7 @@ def analyze_text(payload: dict):
         )
 
     # --- 1. Intelligent Weighting Logic ---
-    match_threshold = 35.0
+    match_threshold = 10.0
 
     if input_description and input_root_causes:
         mode = "both"
