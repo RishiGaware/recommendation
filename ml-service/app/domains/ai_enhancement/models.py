@@ -1,10 +1,7 @@
 from typing import Literal
-
 from pydantic import BaseModel, Field, field_validator
 
-
 FieldType = Literal["description", "investigationFindings", "impact"]
-
 
 class AIRefineRequest(BaseModel):
     fieldType: FieldType = Field(..., description="Target DVMS field to refine")
@@ -19,8 +16,6 @@ class AIRefineRequest(BaseModel):
             raise ValueError("Value cannot be empty or whitespace only.")
         return normalized
 
-
 class AIRefineResponse(BaseModel):
     success: bool = True
     generatedText: str
-
