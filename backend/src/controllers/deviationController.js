@@ -300,16 +300,10 @@ const clearAllKnowledge = async (req, res) => {
   try {
     console.log("Triggering isolated AI Knowledge Clear...");
     const result = await clearKnowledge();
-    
-    // 2. Clear Local JSON Database for a full system reset
-    if (fs.existsSync(DATA_FILE)) {
-      fs.writeFileSync(DATA_FILE, JSON.stringify([], null, 2));
-      console.log("Local deviations.json cleared.");
-    }
 
     res.json({
       ...result,
-      message: "AI Knowledge and Local Database cleared successfully."
+      message: "AI Knowledge cleared successfully."
     });
   } catch (error) {
     console.error("Clear Knowledge Error:", error.message);

@@ -6,3 +6,4 @@ sentence-transformers
 qdrant-client
 beautifulsoup4
 openai
+python-dotenv

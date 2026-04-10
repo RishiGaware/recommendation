@@ -1,0 +1,29 @@
+from typing import Optional, List, Union
+from pydantic import BaseModel, Field
+
+class AnalysisRequest(BaseModel):
+    description: Optional[str] = Field(None, description="The textual description of the deviation.")
+    rootCauses: Optional[str] = Field(None, description="The identified root causes of the deviation.")
+    threshold: float = Field(35.0, description="Similarity score threshold for filtering results.")
+    limit: int = Field(5, description="Maximum number of similar deviations to return.")
+
+class SimilarDeviation(BaseModel):
+    id: int
+    matchScore: float
+    descriptionMatch: Optional[float] = None
+    rootCauseMatch: Optional[float] = None
+    # We can add more metadata fields if needed later
+
+class AnalysisResponse(BaseModel):
+    status: str = "success"
+    message: str = "Analysis completed successfully"
+    data: dict
+    # We use a dict for data to match the existing dynamic response format
+
+class KnowledgeItem(BaseModel):
+    id: int
+    description: str
+    rootCauses: str
+
+class AddKnowledgeRequest(BaseModel):
+    items: Union[KnowledgeItem, List[KnowledgeItem]]

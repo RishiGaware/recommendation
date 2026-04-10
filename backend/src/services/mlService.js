@@ -3,7 +3,7 @@ const { ML_SERVICE_URL } = require("../config/env");
 
 const analyzeDeviation = async (payload) => {
   const response = await axios.post(
-    `${ML_SERVICE_URL}/DVMS/analyze`,
+    `${ML_SERVICE_URL}/dvms/analyze`,
     payload,
     { timeout: 60000 }, // 1 min for search
   );
@@ -29,7 +29,7 @@ const addKnowledge = async (data) => {
     const chunk = dataList.slice(i, i + BATCH_SIZE);
     try {
       const response = await axios.post(
-        `${ML_SERVICE_URL}/DVMS/add-knowledge`,
+        `${ML_SERVICE_URL}/dvms/add-knowledge`,
         chunk,
         { timeout: 300000 } // 5 mins per batch
       );
@@ -55,12 +55,12 @@ const addKnowledge = async (data) => {
 };
 
 const clearKnowledge = async () => {
-  const response = await axios.post(`${ML_SERVICE_URL}/DVMS/clear-knowledge`);
+  const response = await axios.post(`${ML_SERVICE_URL}/dvms/clear-knowledge`);
   return response.data;
 };
 
 const getQdrantStatus = async () => {
-  const response = await axios.get(`${ML_SERVICE_URL}/DVMS/qdrant-status`);
+  const response = await axios.get(`${ML_SERVICE_URL}/dvms/qdrant-status`);
   return response.data;
 };
 

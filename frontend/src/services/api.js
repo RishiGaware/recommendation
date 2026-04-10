@@ -10,12 +10,16 @@ export const clearKnowledge = () => axios.post(`${API_URL}/clear-knowledge`);
 export const getQdrantStatus = () => axios.get(`${API_URL}/qdrant-status`);
 
 // ML service (FastAPI)
-// NOTE: This repo's ML service default is commonly run on 8001.
-const ML_API_URL = "http://localhost:8001/ml-service/common";
-export const extractText = (content) =>
-  axios.post(`${ML_API_URL}/extract-text`, { content });
+// Default runs on 8001. You can override via Vite env: VITE_ML_SERVICE_BASE_URL
+const ML_SERVICE_BASE_URL =
+  import.meta.env.VITE_ML_SERVICE_BASE_URL ?? "http://localhost:8001/ml-service";
 
-const ENHANCE_AI_URL =
-  "http://localhost:8001/ml-service/enhance_with_ai/dvms/ai/refine";
+export const extractText = (content) =>
+  axios.post(`${ML_SERVICE_BASE_URL}/common/extract-text`, { content });
+
 export const refineWithAI = ({ fieldType, userInput, userPrompt }) =>
-  axios.post(`${ENHANCE_AI_URL}`, { fieldType, userInput, userPrompt });
+  axios.post(`${ML_SERVICE_BASE_URL}/ai_enhancement/dvms/ai/refine`, {
+    fieldType,
+    userInput,
+    userPrompt,
+  });

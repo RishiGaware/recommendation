@@ -19,7 +19,8 @@ def standard_response(
     
     # Remove 'data' if it is None for clean error responses
     if data is None:
-        del content["data"]
+        if "data" in content:
+            del content["data"]
         
     return JSONResponse(
         status_code=status_code,
