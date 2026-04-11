@@ -4,7 +4,8 @@ from app.domains.dvms.services.dvms_service import (
     analyze_text, 
     add_to_index, 
     clear_all_knowledge, 
-    get_dvms_status
+    get_dvms_status,
+    get_dvms_vectors_by_ids,
 )
 from app.domains.dvms.schemas.models import AnalysisRequest, AddKnowledgeRequest
 from app.core.response_handler import standard_response
@@ -43,6 +44,16 @@ def clear_knowledge_call():
 def get_qdrant_status():
     """Returns the current status and statistics of the vector database."""
     return get_dvms_status()
+
+
+@router.post("/vectors")
+def get_vectors(payload: dict = Body(...)):
+    """
+    Returns real stored vectors from Qdrant for provided deviation IDs.
+    Use for debugging/visualization only (vectors can be large).
+    Body: { "ids": [1,2,3], "includeVectors": true }
+    """
+    return get_dvms_vectors_by_ids(payload)
 
 # For backward compatibility with some documentation/scripts that might use /setup-db
 @router.post("/setup-db")

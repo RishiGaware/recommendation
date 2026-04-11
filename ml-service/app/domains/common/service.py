@@ -14,6 +14,10 @@ def robust_text_extraction(content: str):
     content = re.sub(r'<!--[\s\S]*?-->', '', content)
     soup = BeautifulSoup(content, 'html.parser')
 
+    # Aggressively remove tags that contain non-human-readable content
+    for bad_tag in soup(["script", "style", "xml", "head", "meta", "link"]):
+        bad_tag.decompose()
+
     # Global Sanitization: Clean all text nodes in the soup before processing
     for node in soup.find_all(string=True):
         if node.string:

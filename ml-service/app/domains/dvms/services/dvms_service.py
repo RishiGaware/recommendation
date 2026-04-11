@@ -6,6 +6,7 @@ from qdrant_client.models import PointStruct, VectorParams, Distance
 from app.db.qdrant import get_qdrant_client, DVMS_DESC_COLLECTION, DVMS_ROOT_COLLECTION
 from app.core.model_manager import get_shared_model
 from app.core.response_handler import standard_response
+from app.domains.common.service import robust_text_extraction
 
 # Shared state between API calls
 shared_model = get_shared_model()
@@ -38,8 +39,8 @@ def analyze_text(payload: dict):
     qdrant_client = get_qdrant_client()
     _ensure_dvms_collections(qdrant_client)
     
-    input_description = str(payload.get("description", "") or "").strip()
-    input_root_causes = str(payload.get("rootCauses", "") or "").strip()
+    input_description = robust_text_extraction(str(payload.get("description", "") or ""))
+    input_root_causes = robust_text_extraction(str(payload.get("rootCauses", "") or ""))
     match_threshold = float(payload.get("threshold", 10.0))
 
     if not input_description and not input_root_causes:
@@ -71,7 +72,8 @@ def analyze_text(payload: dict):
             description_results = qdrant_client.query_points(
                 collection_name=DVMS_DESC_COLLECTION,
                 query=description_vector,
-                limit=15
+                limit=15,
+                with_payload=False
             ).points
 
         root_cause_results = []
@@ -80,7 +82,8 @@ def analyze_text(payload: dict):
             root_cause_results = qdrant_client.query_points(
                 collection_name=DVMS_ROOT_COLLECTION,
                 query=root_cause_vector,
-                limit=15
+                limit=15,
+                with_payload=False
             ).points
 
         # --- 3. Score Fusion (Thin Results) ---
@@ -105,7 +108,7 @@ def analyze_text(payload: dict):
                     "root_cause_score": hit.score * 100
                 }
 
-        # --- 4. Final Result Hydration Calculation ---
+        # --- 4. Final Result Calculation ---
         results_list = []
         for match_id, scores in match_scores.items():
             # Calculate weighted average
@@ -133,7 +136,8 @@ def analyze_text(payload: dict):
                 "searchMode": mode,
                 "threshold": match_threshold,
                 "description_weight": description_weight,
-                "root_weight": root_cause_weight
+                "root_weight": root_cause_weight,
+                "hydrated_from": "ML Vector Storage (Qdrant Payload)"
             }
         )
 
@@ -150,6 +154,7 @@ def add_to_index(data: Union[Dict, List[Dict]]):
     Unified handler for single or bulk knowledge indexing.
     """
     qdrant_client = get_qdrant_client()
+    _ensure_dvms_collections(qdrant_client)
     try:
         # 1. Standardize to list format
         deviations_list = data if isinstance(data, list) else [data]
@@ -212,8 +217,16 @@ def add_to_index(data: Union[Dict, List[Dict]]):
         for i in range(0, len(new_deviations), CHUNK_SIZE):
             chunk = new_deviations[i : i + CHUNK_SIZE]
             
-            description_texts = [str(d.get("description", "") or "") for d in chunk]
-            root_cause_texts = [str(d.get("rootCauses", "") or "") for d in chunk]
+            # Clean each description and root cause using the robust service
+            clean_chunk = []
+            for d in chunk:
+                # Store the cleaned versions directly in the payload to keep it simple
+                d["description"] = robust_text_extraction(str(d.get("description", "") or ""))
+                d["rootCauses"] = robust_text_extraction(str(d.get("rootCauses", "") or ""))
+                clean_chunk.append(d)
+
+            description_texts = [d["description"] for d in clean_chunk]
+            root_cause_texts = [d["rootCauses"] for d in clean_chunk]
             
             description_vectors = shared_model.encode(description_texts).tolist()
             root_cause_vectors = shared_model.encode(root_cause_texts).tolist()
@@ -253,20 +266,45 @@ def add_to_index(data: Union[Dict, List[Dict]]):
 
 def clear_all_knowledge():
     """
-    Clears all AI knowledge by recreating Qdrant collections.
+    Clears all AI knowledge by dynamically discovering all Qdrant collections
+    and recreating them. Ensures a truly clean slate.
     """
     qdrant_client = get_qdrant_client()
     try:
-        for name in [DVMS_DESC_COLLECTION, DVMS_ROOT_COLLECTION]:
-            qdrant_client.recreate_collection(
-                collection_name=name, 
-                vectors_config=VectorParams(size=384, distance=Distance.COSINE)
-            )
+        # Discover all current collections
+        collections = qdrant_client.get_collections().collections
+        collection_names = [c.name for c in collections]
         
+        # If no collections found, ensure defaults are at least rooted
+        if not collection_names:
+            collection_names = [DVMS_DESC_COLLECTION, DVMS_ROOT_COLLECTION]
+
+        for name in collection_names:
+            try:
+                # On Windows, embedded Qdrant can have file lock issues with delete_collection
+                # So we delete all points instead for a robust clear.
+                from qdrant_client.models import Filter
+                qdrant_client.delete(
+                    collection_name=name,
+                    points_selector=Filter(
+                        must=[] # Empty filter matches everything
+                    ),
+                    wait=True
+                )
+                time.sleep(0.5) # Extra buffer for Windows FS
+            except Exception as e:
+                print(f"Warning: Failed to clear points in {name}: {e}")
+        
+        # Force a small refresh wait for embedded storage if needed (optional)
+        # Verify counts after clearing
+        final_counts = {}
+        for name in collection_names:
+            final_counts[name] = qdrant_client.count(name).count
+
         return standard_response(
             status="success",
-            message="AI Knowledge has been successfully cleared.",
-            data={"stored_vectors": 0}
+            message=f"AI Knowledge cleared successfully across {len(collection_names)} collections.",
+            data={"stored_vectors": final_counts}
         )
     except Exception as error:
         return standard_response(
@@ -277,15 +315,19 @@ def clear_all_knowledge():
 
 def get_dvms_status():
     """
-    Checks connection to Qdrant and returns collection stats.
+    Checks connection to Qdrant and returns comprehensive collection stats.
     """
     client = get_qdrant_client()
     try:
         _ensure_dvms_collections(client)
-        desc_c = client.count(DVMS_DESC_COLLECTION).count
-        root_c = client.count(DVMS_ROOT_COLLECTION).count
         
-        # Grab a sample if available
+        # Dynamically discover all collections and their counts
+        collections = client.get_collections().collections
+        stats = {}
+        for c in collections:
+            stats[c.name] = client.count(c.name).count
+        
+        # Grab a sample from the primary description collection if available
         res = client.scroll(collection_name=DVMS_DESC_COLLECTION, limit=1, with_payload=True)
         sample = res[0][0].payload if res[0] else None
         
@@ -293,7 +335,7 @@ def get_dvms_status():
             status="success",
             message="Connected to local qdrant", 
             data={
-                "stored_vectors": {"dvms_desc": desc_c, "dvms_root": root_c},
+                "stored_vectors": stats,
                 "sample_data": sample
             }
         )
@@ -302,4 +344,106 @@ def get_dvms_status():
             status="error", 
             message=f"Qdrant status check failed: {str(e)}",
             status_code=500
+        )
+
+def get_dvms_vectors_by_ids(payload: dict):
+    """
+    Fetch stored vectors for a set of deviation IDs from both DVMS collections.
+    Payload:
+      - ids: list[int]
+      - includeVectors: bool (default True)
+    """
+    try:
+        ids = payload.get("ids", [])
+        include_vectors = payload.get("includeVectors", True)
+        
+        client = get_qdrant_client()
+        _ensure_dvms_collections(client)
+
+        norm_ids = []
+        is_fetch_all = False
+
+        if not isinstance(ids, list) or not ids:
+            is_fetch_all = True
+        else:
+            # Normalize to ints
+            for x in ids:
+                try:
+                    norm_ids.append(int(x))
+                except Exception:
+                    continue
+            if not norm_ids:
+                is_fetch_all = True
+
+        desc_points = []
+        root_points = []
+
+        if is_fetch_all:
+            # Fetch default batch (top 100)
+            res = client.scroll(
+                collection_name=DVMS_DESC_COLLECTION,
+                limit=100,
+                with_payload=True,
+                with_vectors=bool(include_vectors),
+            )
+            desc_points = res[0]
+            norm_ids = [int(p.id) for p in desc_points]
+            
+            # Fetch matching root cause vectors
+            if norm_ids:
+                root_points = client.retrieve(
+                    collection_name=DVMS_ROOT_COLLECTION,
+                    ids=norm_ids,
+                    with_payload=False,
+                    with_vectors=bool(include_vectors),
+                )
+        else:
+            # specific IDs
+            desc_points = client.retrieve(
+                collection_name=DVMS_DESC_COLLECTION,
+                ids=norm_ids,
+                with_payload=True,
+                with_vectors=bool(include_vectors),
+            )
+            root_points = client.retrieve(
+                collection_name=DVMS_ROOT_COLLECTION,
+                ids=norm_ids,
+                with_payload=False,
+                with_vectors=bool(include_vectors),
+            )
+
+        desc_map = {
+            int(p.id): {
+                "id": int(p.id),
+                "payload": p.payload,
+                "vector": p.vector if include_vectors else None,
+            }
+            for p in desc_points
+        }
+        root_map = {
+            int(p.id): (p.vector if include_vectors else None)
+            for p in root_points
+        }
+
+        merged = []
+        for i in norm_ids:
+            merged.append(
+                {
+                    "id": i,
+                    "descriptionVector": desc_map.get(i, {}).get("vector"),
+                    "rootCauseVector": root_map.get(i),
+                    "payload": desc_map.get(i, {}).get("payload"),
+                }
+            )
+
+        return standard_response(
+            status="success",
+            message="Vectors retrieved successfully.",
+            data={"items": merged, "count": len(merged)},
+        )
+    except Exception as e:
+        return standard_response(
+            status="error",
+            message=f"Vector retrieval failed: {str(e)}",
+            status_code=500,
         )

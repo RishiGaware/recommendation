@@ -68,6 +68,8 @@
   display: flex;
   gap: 15px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
+  overflow-x: auto;
 }
 
 .nav-item {
@@ -208,6 +210,10 @@ input:focus, select:focus, textarea:focus {
   font-size: 0.85rem;
   border-radius: 4px;
   color: #555;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
 .split-view {

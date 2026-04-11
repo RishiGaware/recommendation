@@ -393,5 +393,23 @@
     "deviationClassification": "Critical",
     "id": 1775820672413,
     "created_at": "2026-04-10T11:31:12.125Z"
+  },
+  {
+    "deviation_no": "DEV-PH-2025-602",
+    "description": "Relative Humidity (RH) in the Finished Goods Warehouse peaked at 72% (Limit: NMT 60%) for a duration of 5 hours.",
+    "rootCauses": "Condenser coil icing in the main HVAC unit (AHU-04) caused by a faulty defrost timer circuit.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Minor",
+    "id": 1775829287311,
+    "created_at": "2026-04-10T13:54:47.295Z"
+  },
+  {
+    "deviation_no": "DEV-PH-2025-804",
+    "description": "Power outage in the ISO Class 5 filling suite caused a temporary loss of positive pressure (0 Pa) for 15 seconds during active filling of Batch #VAX-001.",
+    "rootCauses": "Delayed response time from the Uninterruptible Power Supply (UPS) backup system due to a failed transfer switch.",
+    "deviationType": "Unplanned",
+    "deviationClassification": "Critical",
+    "id": 1775829287669,
+    "created_at": "2026-04-10T13:54:47.295Z"
   }
 ]

@@ -1,9 +1,9 @@
 # ML Service API Reference
 
-This document provides a comprehensive guide to the API endpoints available in the **Universal ML Service**. All responses follow a standardized JSON format: `{ "status": "...", "message": "...", "data": { ... } }`.
+This document provides a comprehensive guide to the API endpoints available in the **Universal ML Service Core**. All responses follow a standardized JSON format: `{ "status": "...", "message": "...", "data": { ... } }`.
 
 ## Base URL
-Default: `http://127.0.0.1:8001` (or as configured in your environment).
+Default: `http://localhost:8000` (or as configured in your environment).
 
 ---
 
@@ -12,14 +12,16 @@ Default: `http://127.0.0.1:8001` (or as configured in your environment).
 ### 1.1 Similarity Analysis
 Performs semantic search against indexed deviations using description and root causes.
 
-- **Endpoint**: `POST /api/DVMS/analyze`
+- **Endpoint**: `POST /ml-service/dvms/analyze`
 - **Description**: Compares input text against two vector collections (description and root causes) and returns a weighted similarity score.
 
 **Sample Request Payload**:
 ```json
 {
   "description": "Temperature in the cold storage area exceeded 8°C for 2 hours.",
-  "rootCauses": "Sensor malfunction due to icing on the probe."
+  "rootCauses": "Sensor malfunction due to icing on the probe.",
+  "threshold": 35.0,
+  "limit": 5
 }
 ```
 
@@ -51,7 +53,7 @@ Performs semantic search against indexed deviations using description and root c
 ### 1.2 Add Knowledge (Indexing)
 Adds new deviation records to the vector search index.
 
-- **Endpoint**: `POST /api/DVMS/add-knowledge`
+- **Endpoint**: `POST /ml-service/dvms/add-knowledge`
 - **Status Code**: Returns `201 Created` if new items are added, `200 OK` if all items already exist.
 - **Description**: Accepts a single object or a batch list. It automatically deduplicates by ID.
 
@@ -89,7 +91,7 @@ Adds new deviation records to the vector search index.
 ### 1.3 Clear Knowledge
 Wipes the vector index for a clean slate.
 
-- **Endpoint**: `POST /api/DVMS/clear-knowledge`
+- **Endpoint**: `POST /ml-service/dvms/clear-knowledge`
 
 **Sample Response**:
 ```json
@@ -107,14 +109,17 @@ Wipes the vector index for a clean slate.
 ### 1.4 Database Setup
 Directly initializes or re-creates the Qdrant collections.
 
-- **Endpoint**: `POST /api/DVMS/setup-db`
-- **Description**: Ensures the required collections (`dvms_description`, `dvms_root_causes`) exist with the correct dimensions (384 for All-MiniLM-L6-v2).
+- **Endpoint**: `POST /ml-service/dvms/setup-db`
+- **Description**: Ensures the required collections existence with the correct dimensions (384 for All-MiniLM-L6-v2).
 
 **Sample Response**:
 ```json
 {
   "status": "success",
-  "message": "Qdrant collections correctly initialized for the app."
+  "message": "AI Knowledge has been successfully cleared.",
+  "data": {
+    "stored_vectors": 0
+  }
 }
 ```
 
@@ -123,7 +128,7 @@ Directly initializes or re-creates the Qdrant collections.
 ### 1.5 System Status
 Check the connectivity and statistics of the vector database.
 
-- **Endpoint**: `GET /api/DVMS/qdrant-status`
+- **Endpoint**: `GET /ml-service/dvms/qdrant-status`
 
 **Sample Response**:
 ```json
@@ -137,7 +142,7 @@ Check the connectivity and statistics of the vector database.
     },
     "sample_data": {
       "id": 105,
-      "description": "Sample description text regarding temperature drift.",
+      "description": "Sample description text mengenai temperature drift.",
       "rootCauses": "Sensor calibration was overdue."
     }
   }
@@ -146,9 +151,63 @@ Check the connectivity and statistics of the vector database.
 
 ---
 
-## 2. Global Services
+## 2. Domain: AI Enhancement
 
-### 2.1 Health Check
+### 2.1 Content Refinement
+Uses LLM logic to transform notes into professional GMP-compliant documentation.
+
+- **Endpoint**: `POST /ml-service/ai_enhancement/dvms/ai/refine`
+- **Description**: Refines specific QMS fields (description, investigationFindings, impact) using few-shot prompting.
+
+**Sample Request Payload**:
+```json
+{
+  "fieldType": "description",
+  "userInput": "freezer was open for 30 mins",
+  "userPrompt": "make it professional and 10 words"
+}
+```
+
+**Sample Response**:
+```json
+{
+  "success": true,
+  "generatedText": "Freezer door left unsecured for 30 minutes, requiring impact assessment."
+}
+```
+
+---
+
+## 3. Global Services
+
+### 3.1 Text Extraction
+Extracts plain text from raw HTML/XML content (optimized for Word exports).
+
+- **Endpoint**: `POST /ml-service/common/extract-text`
+
+**Sample Request Payload**:
+```json
+{
+  "content": "<p>Example <b>HTML</b> content.</p>"
+}
+```
+
+**Sample Response**:
+```json
+{
+  "status": "success",
+  "message": "Text extracted successfully using robust ordering",
+  "data": {
+    "text": "Example HTML content.",
+    "original_length": 34,
+    "extracted_length": 21
+  }
+}
+```
+
+---
+
+### 3.2 Health Check
 Verify if the FastAPI service is online and responsive.
 
 - **Endpoint**: `GET /health`

@@ -1,13 +1,10 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/deviation";
-
 export const analyzeDeviation = (data) =>
-  axios.post(`${API_URL}/analyze`, data);
-export const getCustomDeviations = () => axios.get(API_URL);
-export const addCustomDeviation = (data) => axios.post(API_URL, data);
-export const clearKnowledge = () => axios.post(`${API_URL}/clear-knowledge`);
-export const getQdrantStatus = () => axios.get(`${API_URL}/qdrant-status`);
+  axios.post(`${ML_SERVICE_BASE_URL}/dvms/analyze`, data);
+
+export const getQdrantStatus = () =>
+  axios.get(`${ML_SERVICE_BASE_URL}/dvms/qdrant-status`);
 
 // ML service (FastAPI)
 // Default runs on 8001. You can override via Vite env: VITE_ML_SERVICE_BASE_URL
@@ -24,3 +21,12 @@ export const refineWithAI = ({ fieldType, userInput, userPrompt }) =>
     userInput,
     userPrompt,
   });
+
+export const getDvmsVectorsByIds = ({ ids, includeVectors = true }) =>
+  axios.post(`${ML_SERVICE_BASE_URL}/dvms/vectors`, { ids, includeVectors });
+
+export const clearMlKnowledge = () =>
+  axios.post(`${ML_SERVICE_BASE_URL}/dvms/clear-knowledge`);
+
+export const addMlKnowledge = (data) =>
+  axios.post(`${ML_SERVICE_BASE_URL}/dvms/add-knowledge`, data);

@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 
 # Explicit imports for routing
+from app.domains.common.router import router as common_router
 from app.domains.dvms.api.router import router as dvms_router
 from app.domains.ai_enhancement.api.v1.router import router as ai_router
 from app.core.response_handler import standard_response
@@ -23,6 +24,13 @@ app.add_middleware(
 )
 
 # --- Explicit Router Registration ---
+# Mounting Common Domain
+app.include_router(
+    common_router,
+    prefix="/ml-service/common",
+    tags=["common"],
+)
+
 # Mounting DVMS Domain
 app.include_router(
     dvms_router, 
