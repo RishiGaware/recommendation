@@ -15,11 +15,11 @@ const ML_SERVICE_BASE_URL =
 export const extractText = (content) =>
   axios.post(`${ML_SERVICE_BASE_URL}/common/extract-text`, { content });
 
-export const refineWithAI = ({ fieldType, userInput, userPrompt }) =>
+export const refineWithAI = ({ fieldType, value, prompt }) =>
   axios.post(`${ML_SERVICE_BASE_URL}/ai_enhancement/dvms/ai/refine`, {
     fieldType,
-    userInput,
-    userPrompt,
+    value,
+    prompt,
   });
 
 export const getDvmsVectorsByIds = ({ ids, includeVectors = true }) =>

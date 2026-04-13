@@ -5,10 +5,10 @@ FieldType = Literal["description", "investigationFindings", "impact"]
 
 class AIRefineRequest(BaseModel):
     fieldType: FieldType = Field(..., description="Target DVMS field to refine")
-    userInput: str = Field(..., min_length=1, description="Existing field content")
-    userPrompt: str = Field(..., min_length=1, description="User intent for refinement")
+    value: str = Field(..., min_length=1, description="Existing field content or keywords")
+    prompt: str = Field(..., min_length=1, description="User intent or instruction for refinement")
 
-    @field_validator("userInput", "userPrompt")
+    @field_validator("value", "prompt")
     @classmethod
     def validate_non_empty_text(cls, value: str) -> str:
         normalized = value.strip()

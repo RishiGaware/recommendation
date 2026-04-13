@@ -28,34 +28,35 @@ def refine_qms_content(payload: AIRefineRequest) -> str:
     """
     prompt = build_refinement_prompt(
         field_type=payload.fieldType,
-        user_input=payload.userInput,
-        user_prompt=payload.userPrompt,
+        user_input=payload.value,
+        user_prompt=payload.prompt,
     )
 
     try:
         client = get_openai_client()
         request_params = {
             "model": DEFAULT_MODEL,
-            "input": [
+            "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ],
         }
 
-        # Attempt to call with temperature, fallback if unsupported
+        # Attempt to call with temperature, fallback if unsupported (e.g. for o1 models)
         try:
-            response = client.responses.create(**request_params, temperature=DEFAULT_TEMPERATURE)
+            response = client.chat.completions.create(**request_params, temperature=DEFAULT_TEMPERATURE)
         except Exception as e:
-            if "Unsupported parameter: 'temperature'" in str(e):
-                response = client.responses.create(**request_params)
+            error_msg = str(e).lower()
+            if "temperature" in error_msg and "unsupported" in error_msg:
+                response = client.chat.completions.create(**request_params)
             else:
                 raise
 
-        generated_text = (response.output_text or "").strip()
+        generated_text = (response.choices[0].message.content or "").strip()
         if not generated_text:
             raise ValueError("LLM returned an empty response")
 
-        return _enforce_word_count(generated_text, payload.userPrompt)
+        return _enforce_word_count(generated_text, payload.prompt)
 
     except (RuntimeError, ValueError) as exc:
         raise HTTPException(

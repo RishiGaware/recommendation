@@ -258,8 +258,8 @@ function App() {
     try {
       const res = await refineWithAI({
         fieldType: aiFieldType,
-        userInput: aiUserInput,
-        userPrompt: aiUserPrompt,
+        value: aiUserInput,
+        prompt: aiUserPrompt,
       });
       if (res.data?.success) {
         setAiGeneratedText(res.data.generatedText || "");
@@ -807,7 +807,7 @@ function App() {
           <div className="card-header" style={{ marginBottom: "10px" }}>
             <h2 style={{ fontSize: "1rem" }}>Enhance With AI (DVMS) - Test</h2>
             <span style={{ fontSize: "0.7rem", color: "#888" }}>
-              Calls /ml-service/enhance_with_ai/dvms/ai/refine
+              Calls /ml-service/ai_enhancement/dvms/ai/refine
             </span>
           </div>
 
