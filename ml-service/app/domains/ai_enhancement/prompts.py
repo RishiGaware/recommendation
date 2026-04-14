@@ -6,23 +6,30 @@ You are a pharmaceutical Quality Management System expert supporting deviation d
 Write in a professional GMP-compliant tone.
 Stay strictly within pharmaceutical QMS context.
 Do not invent irrelevant details, regulations, or data not implied by the input.
-Follow the User Requirement with highest priority, including length constraints (e.g., "5 words").
-If the input is brief, expand it carefully and plausibly without changing the original meaning.
-If the input is already detailed, refine it for clarity, structure, and compliance tone.
-Return only the final refined text with no preamble, labels, bullets, or markdown.
+Follow the User Requirement with highest priority.
+Provide content in the format (table, paragraph, etc.) specified in the field instructions below.
+Return only the final refined content with no preamble or labels.
 """.strip()
 
 FIELD_INSTRUCTIONS: Dict[str, str] = {
     "description": (
-        "Generate or enhance a deviation description with clear observations, "
-        "sequence of events, affected process or material, and relevant timeline details."
+        "Generate or enhance a deviation description. "
+        "MANDATORY FORMAT: Start with a Markdown Table summarizing key facts. "
+        "The table MUST follow this exact three-part structure:\n"
+        "1. Header row (e.g., | Field | Value |)\n"
+        "2. Separator row (REQUIRED: | --- | --- |)\n"
+        "3. Data rows (e.g., | Deviation ID | DEV-001 |)\n\n"
+        "Follow the table with a detailed descriptive paragraph. "
+        "Include columns for Deviation ID, Date, Location, and Observed Value."
     ),
     "investigationFindings": (
-        "Generate detailed investigation findings with logical analysis, evidence-based "
+        "Generate detailed investigation findings as professional plain text paragraphs. "
+        "Do NOT use Markdown tables for this field. Focus on logical analysis, evidence-based "
         "reasoning, and a plausible root cause statement grounded in the provided facts."
     ),
     "impact": (
-        "Generate an impact assessment focused on product quality, patient safety, "
+        "Generate an impact assessment as professional plain text paragraphs. "
+        "Do NOT use Markdown tables for this field. Focus on product quality, patient safety, "
         "regulatory compliance, batch disposition, and operational risk."
     ),
 }
@@ -34,7 +41,11 @@ Input Content:
 Temperature reached 12.5C in cold room for 2 hours
 
 Output:
-During routine environmental monitoring, the temperature in Cold Storage Room CR-02 was observed at 12.5C, exceeding the approved storage range of 2C to 8C for approximately two hours. The excursion was identified during routine log review, and the materials stored in the area were immediately placed on hold pending investigation and impact assessment.
+| Deviation ID | Date | Department | Location | Observed Value | Limit | Duration |
+| --- | --- | --- | --- | --- | --- | --- |
+| DEV-2024-001 | 08-Apr-2026 | Warehouse | Cold Storage Room CR-02 | 12.5°C | 2.0-8.0°C | 2 Hours |
+
+During routine environmental monitoring, the temperature in Cold Storage Room CR-02 was observed at 12.5°C, exceeding the approved storage range of 2°C to 8°C for approximately two hours. The materials stored in the area were immediately placed on hold pending investigation and impact assessment.
 """.strip(),
     "investigationFindings": """
 Example:
@@ -51,6 +62,13 @@ Temperature excursion in storage room for 2 hours
 
 Output:
 The deviation may have affected the storage condition of the quarantined materials and therefore has a potential impact on product quality. A batch-wise assessment is required to determine whether any material was exposed beyond its qualified stability limits. There is no immediate evidence of patient safety impact; however, the event represents a GMP compliance risk until disposition is completed and supporting temperature mapping and product stability data are reviewed.
+""".strip(),
+    "table_example": """
+Example Table Output:
+| Field | Value |
+| --- | --- |
+| Deviation ID | DEV-001 |
+| Status | Quarantined |
 """.strip(),
 }
 

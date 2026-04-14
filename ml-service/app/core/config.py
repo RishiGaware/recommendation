@@ -6,10 +6,22 @@ class Settings:
     PROJECT_NAME: str = "Universal ML Service Core"
     API_V1_STR: str = "/ml-service"
     
+    @property
+    def AI_PROVIDER(self) -> str:
+        return os.environ.get("AI_PROVIDER", "gemini").lower()
+
     # --- OpenAI Configuration ---
     @property
     def OPENAI_API_KEY(self) -> str:
         return os.environ.get("OPENAI_API_KEY", "")
+
+    @property
+    def GOOGLE_API_KEY(self) -> str:
+        return os.environ.get("GOOGLE_API_KEY", "")
+
+    @property
+    def GEMINI_MODEL(self) -> str:
+        return os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
 
     @property
     def OPENAI_MODEL(self) -> str:
