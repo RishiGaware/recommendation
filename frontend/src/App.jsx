@@ -17,6 +17,8 @@ function App() {
   // Analyze State
   const [description, setDescription] = useState("");
   const [rootCauses, setRootCauses] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -146,6 +148,8 @@ function App() {
       const payload = {
         description,
         rootCauses,
+        startDate: startDate || null,
+        endDate: endDate || null,
       };
 
       const res = await analyzeDeviation(payload);
@@ -368,6 +372,25 @@ function App() {
             />
           </div>
 
+          <div className="form-row">
+            <div className="form-group">
+              <label>Start Date</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label>End Date</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+          </div>
+
           <button className="btn" onClick={handleAnalyze} disabled={loading}>
             {loading ? "Analyzing..." : "Generate Analysis"}
           </button>
@@ -519,13 +542,14 @@ function App() {
                   fontFamily: "monospace",
                   fontSize: "0.8rem",
                 }}
-                placeholder='[ { "deviation_no": "DEV-001", "description": "...", "rootCauses": "..." } ]'
+                placeholder='[ { "id": 101, "description": "...", "rootCauses": "...", "initiationDate": "2024-11-10" } ]'
                 value={jsonInput}
                 onChange={(e) => setJsonInput(e.target.value)}
               />
               <p style={{ fontSize: "0.65rem", color: "#666" }}>
-                Required: <strong>id</strong> (or auto-gen),{" "}
-                <strong>description</strong>, <strong>rootCauses</strong>
+                Required: <strong>id</strong>, <strong>description</strong>,{" "}
+                <strong>rootCauses</strong>. Optional:{" "}
+                <strong>initiationDate</strong> (YYYY-MM-DD)
               </p>
             </div>
 

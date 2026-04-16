@@ -1,7 +1,7 @@
 import time
 import traceback
 from typing import Union, List, Dict, Optional
-from qdrant_client.models import PointStruct, VectorParams, Distance
+from qdrant_client.models import PointStruct, VectorParams, Distance, Filter, FieldCondition, Range
 
 from app.db.qdrant import get_qdrant_client, DVMS_DESC_COLLECTION, DVMS_ROOT_COLLECTION
 from app.core.model_manager import get_shared_model
@@ -42,6 +42,8 @@ def analyze_text(payload: dict):
     input_description = robust_text_extraction(str(payload.get("description", "") or ""))
     input_root_causes = robust_text_extraction(str(payload.get("rootCauses", "") or ""))
     match_threshold = float(payload.get("threshold", 10.0))
+    start_date = payload.get("startDate")
+    end_date = payload.get("endDate")
 
     if not input_description and not input_root_causes:
         return standard_response(
@@ -63,6 +65,24 @@ def analyze_text(payload: dict):
         mode = "root_causes_only"
         description_weight = 0.0
         root_cause_weight = 1.0
+        
+    # --- 2. Construct Qdrant Filter (Metadata filtering) ---
+    query_filter = None
+    if start_date or end_date:
+        range_args = {}
+        if start_date:
+            range_args["gte"] = int(start_date.replace("-", ""))
+        if end_date:
+            range_args["lte"] = int(end_date.replace("-", ""))
+            
+        query_filter = Filter(
+            must=[
+                FieldCondition(
+                    key="initiation_date_numeric",
+                    range=Range(**range_args)
+                )
+            ]
+        )
 
     try:
         # --- 2. Dual-Vector Search ---
@@ -73,6 +93,7 @@ def analyze_text(payload: dict):
                 collection_name=DVMS_DESC_COLLECTION,
                 query=description_vector,
                 limit=15,
+                query_filter=query_filter,
                 with_payload=False
             ).points
 
@@ -83,6 +104,7 @@ def analyze_text(payload: dict):
                 collection_name=DVMS_ROOT_COLLECTION,
                 query=root_cause_vector,
                 limit=15,
+                query_filter=query_filter,
                 with_payload=False
             ).points
 
@@ -153,6 +175,7 @@ def add_to_index(data: Union[Dict, List[Dict]]):
     """
     Unified handler for single or bulk knowledge indexing.
     """
+    # print(f"--- Indexing Payload Received ---\n{data}\n---------------------------------")
     qdrant_client = get_qdrant_client()
     _ensure_dvms_collections(qdrant_client)
     try:
@@ -223,6 +246,16 @@ def add_to_index(data: Union[Dict, List[Dict]]):
                 # Store the cleaned versions directly in the payload to keep it simple
                 d["description"] = robust_text_extraction(str(d.get("description", "") or ""))
                 d["rootCauses"] = robust_text_extraction(str(d.get("rootCauses", "") or ""))
+                
+                # Capture and normalize initiationDate for filtering
+                init_date = d.get("initiationDate")
+                if init_date:
+                    try:
+                        # Convert 2024-11-10 to 20241110 for integer range filtering
+                        d["initiation_date_numeric"] = int(str(init_date).replace("-", ""))
+                    except (ValueError, TypeError):
+                        pass
+                
                 clean_chunk.append(d)
 
             description_texts = [d["description"] for d in clean_chunk]
