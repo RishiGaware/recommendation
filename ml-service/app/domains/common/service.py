@@ -1,7 +1,44 @@
 import re
+import ast
 from bs4 import BeautifulSoup
 
+def normalize_root_causes(rc) -> tuple[str, list]:
+    """
+    Standardizes root causes from various formats (List, String, Stringified List)
+    into a consistent pipe-separated string for embedding and a clean list for storage.
+    """
+    if not rc:
+        return "", []
+    
+    # Handle list input
+    if isinstance(rc, list):
+        clean_list = [str(x).strip() for x in rc if x]
+        return " | ".join(clean_list), clean_list
+    
+    # Handle string input
+    rc_str = str(rc).strip()
+    
+    # Check if it looks like a stringified Python list: "['a', 'b']"
+    if rc_str.startswith('[') and rc_str.endswith(']'):
+        try:
+            # Safely evaluate string as a list
+            parsed = ast.literal_eval(rc_str)
+            if isinstance(parsed, list):
+                clean_list = [str(x).strip() for x in parsed if x]
+                return " | ".join(clean_list), clean_list
+        except (ValueError, SyntaxError):
+            pass
+            
+    # Handle pipe-separated string
+    if "|" in rc_str:
+        clean_list = [x.strip() for x in rc_str.split('|') if x.strip()]
+        return " | ".join(clean_list), clean_list
+        
+    # Default: single string/root cause
+    return rc_str, [rc_str]
+
 def robust_text_extraction(content: str):
+
     """
     Robust text extraction logic for HTML/XML content.
     Handles tables with order preservation and global text capture.

@@ -1,4 +1,5 @@
 import time
+
 import traceback
 from typing import Union, List, Dict, Optional
 from qdrant_client.models import PointStruct, VectorParams, Distance, Filter, FieldCondition, Range
@@ -6,12 +7,15 @@ from qdrant_client.models import PointStruct, VectorParams, Distance, Filter, Fi
 from app.db.qdrant import get_qdrant_client, DVMS_DESC_COLLECTION, DVMS_ROOT_COLLECTION
 from app.core.model_manager import get_shared_model
 from app.core.response_handler import standard_response
-from app.domains.common.service import robust_text_extraction
+from app.domains.common.service import robust_text_extraction, normalize_root_causes
+
 
 # Shared state between API calls
 shared_model = get_shared_model()
 
+
 def _ensure_dvms_collections(client) -> None:
+
     """
     Ensure DVMS collections exist for embedded Qdrant.
     This prevents first-run failures like 'Collection dvms_desc not found'.
@@ -40,7 +44,11 @@ def analyze_text(payload: dict):
     _ensure_dvms_collections(qdrant_client)
     
     input_description = robust_text_extraction(str(payload.get("description", "") or ""))
-    input_root_causes = robust_text_extraction(str(payload.get("rootCauses", "") or ""))
+    
+    rc_raw = payload.get("rootCauses", "")
+    norm_rc_str, _ = normalize_root_causes(rc_raw)
+    input_root_causes = robust_text_extraction(norm_rc_str)
+
     match_threshold = float(payload.get("threshold", 10.0))
     start_date = payload.get("startDate")
     end_date = payload.get("endDate")
@@ -94,7 +102,7 @@ def analyze_text(payload: dict):
                 query=description_vector,
                 limit=15,
                 query_filter=query_filter,
-                with_payload=False
+                with_payload=True
             ).points
 
         root_cause_results = []
@@ -105,7 +113,7 @@ def analyze_text(payload: dict):
                 query=root_cause_vector,
                 limit=15,
                 query_filter=query_filter,
-                with_payload=False
+                with_payload=True
             ).points
 
         # --- 3. Score Fusion (Thin Results) ---
@@ -116,18 +124,23 @@ def analyze_text(payload: dict):
             match_scores[hit.id] = {
                 "id": hit.id,
                 "description_score": hit.score * 100,
-                "root_cause_score": 0.0
+                "root_cause_score": 0.0,
+                "payload": hit.payload
             }
 
         # Merge root cause findings
         for hit in root_cause_results:
             if hit.id in match_scores:
                 match_scores[hit.id]["root_cause_score"] = hit.score * 100
+                # Payload is redundant if ID matches, but we keep it here just in case
+                if not match_scores[hit.id].get("payload"):
+                    match_scores[hit.id]["payload"] = hit.payload
             else:
                 match_scores[hit.id] = {
                     "id": hit.id,
                     "description_score": 0.0,
-                    "root_cause_score": hit.score * 100
+                    "root_cause_score": hit.score * 100,
+                    "payload": hit.payload
                 }
 
         # --- 4. Final Result Calculation ---
@@ -140,11 +153,18 @@ def analyze_text(payload: dict):
             ) / (description_weight + root_cause_weight)
 
             if final_match_score >= match_threshold:
+                # Hydrate payload-specific fields if they exist
+                p = scores.get("payload", {})
                 results_list.append({
                     "id": match_id,
                     "matchScore": round(final_match_score, 1),
                     "descriptionMatch": round(scores["description_score"], 1),
-                    "rootCauseMatch": round(scores["root_cause_score"], 1)
+                    "rootCauseMatch": round(scores["root_cause_score"], 1),
+                    "deviationNo": p.get("deviationNo"),
+                    "investigationId": p.get("investigationId"),
+                    "description": str(p.get("description", "")).replace("\n", " ").strip(),
+                    "rootCauses": str(p.get("rootCauses", "")).replace("\n", " ").strip(),
+                    "payload": p
                 })
 
         # Sort by best match score descending
@@ -245,9 +265,16 @@ def add_to_index(data: Union[Dict, List[Dict]]):
             for d in chunk:
                 # Store the cleaned versions directly in the payload to keep it simple
                 d["description"] = robust_text_extraction(str(d.get("description", "") or ""))
-                d["rootCauses"] = robust_text_extraction(str(d.get("rootCauses", "") or ""))
+                
+                rc_raw = d.get("rootCauses", "")
+                norm_rc_str, clean_rc_list = normalize_root_causes(rc_raw)
+                
+                # Store as clean list in payload, but use normalized string for embedding
+                d["rootCauses"] = clean_rc_list
+                embedding_rc_input = robust_text_extraction(norm_rc_str)
                 
                 # Capture and normalize initiationDate for filtering
+
                 init_date = d.get("initiationDate")
                 if init_date:
                     try:
@@ -259,7 +286,10 @@ def add_to_index(data: Union[Dict, List[Dict]]):
                 clean_chunk.append(d)
 
             description_texts = [d["description"] for d in clean_chunk]
-            root_cause_texts = [d["rootCauses"] for d in clean_chunk]
+            # Use the temporary embedding_rc_input variable if we had stored it, 
+            # but since we are iterating again, we re-normalize for embedding safety
+            root_cause_texts = [normalize_root_causes(d["rootCauses"])[0] for d in clean_chunk]
+
             
             description_vectors = shared_model.encode(description_texts).tolist()
             root_cause_vectors = shared_model.encode(root_cause_texts).tolist()
