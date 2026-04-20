@@ -6,6 +6,10 @@ import {
   getDvmsVectorsByIds,
   clearMlKnowledge,
   addMlKnowledge,
+  analyzeOos,
+  addOosKnowledge,
+  clearOosKnowledge,
+  getOosStatus,
 } from "./services/api";
 import { useState, useEffect } from "react";
 
@@ -47,6 +51,29 @@ function App() {
   const [aiGeneratedText, setAiGeneratedText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
+
+  // OOS Pro Specific State
+  const [oosPhase, setOosPhase] = useState(1);
+  const [oosDescription, setOosDescription] = useState("");
+  const [oosRootCauses, setOosRootCauses] = useState("");
+  const [oosResult, setOosResult] = useState(null);
+  const [oosLoading, setOosLoading] = useState(false);
+  const [oosStartDate, setOosStartDate] = useState("");
+  const [oosEndDate, setOosEndDate] = useState("");
+
+  const [oosJsonInput, setOosJsonInput] = useState("");
+  const [isOosAdding, setIsOosAdding] = useState(false);
+  const [oosStatus, setOosStatus] = useState(null);
+
+  // Enhance With AI (OOS) Test State
+  const [oosAiFieldType, setOosAiFieldType] = useState("oosDescription");
+  const [oosAiUserPrompt, setOosAiUserPrompt] = useState(
+    "Technical investigation",
+  );
+  const [oosAiUserInput, setOosAiUserInput] = useState("");
+  const [oosAiGeneratedText, setOosAiGeneratedText] = useState("");
+  const [oosAiLoading, setOosAiLoading] = useState(false);
+  const [oosAiError, setOosAiError] = useState("");
 
   const stripHtml = (html) => {
     if (!html) return "";
@@ -135,9 +162,102 @@ function App() {
       } else {
         setDbStatus({ status: "disconnected", message: res.data?.message });
       }
+
+      const oosRes = await getOosStatus();
+      if (oosRes.data && oosRes.data.status === "success") {
+        setOosStatus(oosRes.data);
+      }
     } catch (error) {
       console.error("Critical System Status Error:", error);
       setDbStatus({ status: "disconnected" });
+    }
+  };
+
+  const handleOosAnalyze = async () => {
+    if (!oosDescription.trim() && !oosRootCauses.trim()) return;
+    setOosLoading(true);
+    try {
+      const res = await analyzeOos({
+        description: oosDescription,
+        rootCauses: oosRootCauses,
+        phase: oosPhase,
+        startDate: oosStartDate || null,
+        endDate: oosEndDate || null,
+      });
+      if (res.data.status === "success") {
+        setOosResult(res.data.data);
+      } else {
+        alert("OOS Analysis error: " + (res.data.message || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Error analyzing OOS:", error);
+      alert(error.response?.data?.message || "OOS Analysis failed.");
+    } finally {
+      setOosLoading(false);
+    }
+  };
+
+  const handleOosAddKnowledge = async () => {
+    if (!oosJsonInput.trim()) return alert("Please provide OOS JSON data.");
+    setIsOosAdding(true);
+    try {
+      let payload = JSON.parse(oosJsonInput);
+      const items = Array.isArray(payload) ? payload : [payload];
+
+      // Inject phase if not present
+      const phasedItems = items.map((it) => ({ ...it, phase: oosPhase }));
+      const res = await addOosKnowledge(phasedItems);
+
+      if (res.data.status === "success") {
+        setOosJsonInput("");
+        fetchStatus();
+        alert(res.data.message);
+      } else {
+        alert("OOS Save failed: " + res.data.message);
+      }
+    } catch (error) {
+      alert("Error: " + (error.message || "Invalid JSON"));
+    } finally {
+      setIsOosAdding(false);
+    }
+  };
+
+  const handleOosClear = async (targetPhase = null) => {
+    const scope = targetPhase ? `Phase ${targetPhase}` : "ALL Phases";
+    if (!window.confirm(`WIPE OOS Knowledge for ${scope}?`)) return;
+
+    try {
+      const res = await clearOosKnowledge(targetPhase);
+      if (res.data.status === "success") {
+        alert(res.data.message);
+        fetchStatus();
+      }
+    } catch (error) {
+      alert("Clear failed.");
+    }
+  };
+
+  const handleOosEnhance = async () => {
+    if (!oosAiUserInput.trim()) return alert("Please provide input text.");
+    setOosAiLoading(true);
+    setOosAiError("");
+    setOosAiGeneratedText("");
+    try {
+      const res = await refineWithAI({
+        fieldType: oosAiFieldType,
+        value: oosAiUserInput,
+        prompt: oosAiUserPrompt,
+        domain: "oos",
+      });
+      if (res.data?.success) {
+        setOosAiGeneratedText(res.data.generatedText || "");
+      } else {
+        setOosAiError(res.data?.message || "AI refine failed.");
+      }
+    } catch (error) {
+      setOosAiError(error.message || "AI connection error");
+    } finally {
+      setOosAiLoading(false);
     }
   };
 
@@ -304,11 +424,14 @@ function App() {
               <div className="status-dot"></div>
               {dbStatus.status === "success" ? (
                 <span>
-                  Qdrant Connected •{" "}
-                  {dbStatus.data?.stored_vectors?.dvms_desc || 0} vectors
+                  DVMS: {dbStatus.data?.stored_vectors?.dvms_desc || 0} • OOS
+                  P1:{" "}
+                  {oosStatus?.data?.stored_vectors?.phase_1?.oos_desc_p1 || 0} •{" "}
+                  OOS P2:{" "}
+                  {oosStatus?.data?.stored_vectors?.phase_2?.oos_desc_p2 || 0}
                 </span>
               ) : (
-                <span>Qdrant Offline</span>
+                <span>System Offline</span>
               )}
             </div>
           ) : (
@@ -347,6 +470,12 @@ function App() {
           onClick={() => setActiveTab("enhance_ai")}
         >
           Enhance With AI
+        </div>
+        <div
+          className={`nav-item ${activeTab === "oos_pro" ? "active" : ""}`}
+          onClick={() => setActiveTab("oos_pro")}
+        >
+          OOS Pro
         </div>
       </nav>
 
@@ -826,12 +955,13 @@ function App() {
             </div>
           )}
         </div>
-      ) : (
+      ) : activeTab === "enhance_ai" ? (
         <div className="section">
+          {/* Keep Existing DVMS AI - I will move it here */}
           <div className="card-header" style={{ marginBottom: "10px" }}>
             <h2 style={{ fontSize: "1rem" }}>Enhance With AI (DVMS) - Test</h2>
             <span style={{ fontSize: "0.7rem", color: "#888" }}>
-              Calls /ml-service/ai_enhancement/dvms/ai/refine
+              Calls /ml-service/dvms/ai/refine
             </span>
           </div>
 
@@ -949,6 +1079,246 @@ function App() {
               </div>
             </div>
           )}
+        </div>
+      ) : activeTab === "oos_pro" ? (
+        <div className="section">
+          {/* Phase Toggle */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "20px",
+              background: "#f0f7ff",
+              padding: "10px 15px",
+              borderRadius: "8px",
+              border: "1px solid #cce3ff",
+            }}
+          >
+            <h2 style={{ fontSize: "1.1rem", margin: 0, color: "#0056b3" }}>
+              OOS Professional Testing
+            </h2>
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <label style={{ fontWeight: "600", fontSize: "0.9rem" }}>
+                Active Investigation Phase:
+              </label>
+              <button
+                className={`btn ${oosPhase === 1 ? "" : "btn-secondary"}`}
+                onClick={() => setOosPhase(1)}
+                style={{ minWidth: "80px", padding: "5px" }}
+              >
+                Phase 1
+              </button>
+              <button
+                className={`btn ${oosPhase === 2 ? "" : "btn-secondary"}`}
+                onClick={() => setOosPhase(2)}
+                style={{ minWidth: "80px", padding: "5px" }}
+              >
+                Phase 2
+              </button>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "25px",
+            }}
+          >
+            {/* OOS Analyze */}
+            <div className="card" style={{ padding: "15px" }}>
+              <h3 style={{ fontSize: "1rem", marginTop: 0 }}>
+                Step 1: Similarity Search ({oosPhase === 1 ? "Lab" : "Ext. Lab"}
+                )
+              </h3>
+              <div className="form-group">
+                <label>OOS Description</label>
+                <textarea
+                  style={{ height: "80px" }}
+                  value={oosDescription}
+                  onChange={(e) => setOosDescription(e.target.value)}
+                  placeholder="e.g., Yield failure in HPLC assay..."
+                />
+              </div>
+              <div className="form-group">
+                <label>Root Causes (Optional)</label>
+                <textarea
+                  style={{ height: "60px" }}
+                  value={oosRootCauses}
+                  onChange={(e) => setOosRootCauses(e.target.value)}
+                  placeholder="e.g., Column degradation..."
+                />
+              </div>
+
+              <div
+                style={{ display: "flex", gap: "10px", marginBottom: "15px" }}
+              >
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label style={{ fontSize: "0.75rem" }}>Start Date</label>
+                  <input
+                    type="date"
+                    value={oosStartDate}
+                    onChange={(e) => setOosStartDate(e.target.value)}
+                    style={{ padding: "8px", fontSize: "0.8rem" }}
+                  />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label style={{ fontSize: "0.75rem" }}>End Date</label>
+                  <input
+                    type="date"
+                    value={oosEndDate}
+                    onChange={(e) => setOosEndDate(e.target.value)}
+                    style={{ padding: "8px", fontSize: "0.8rem" }}
+                  />
+                </div>
+              </div>
+
+              <button
+                className="btn"
+                onClick={handleOosAnalyze}
+                disabled={oosLoading}
+              >
+                {oosLoading ? "Searching..." : "Phased Analyze"}
+              </button>
+
+              {oosResult && (
+                <div style={{ marginTop: "15px" }}>
+                  <label style={{ fontSize: "0.8rem", color: "#666" }}>
+                    Similar OOS Cases Found:
+                  </label>
+                  {oosResult.similarDeviations?.map((d) => (
+                    <div
+                      key={d.id}
+                      className="card"
+                      style={{
+                        padding: "8px",
+                        background: "#fdfdfd",
+                        fontSize: "0.8rem",
+                        marginTop: "8px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span style={{ fontWeight: "600" }}>
+                          {d.deviationNo}
+                        </span>
+                        <span className="card-tag">{d.matchScore}%</span>
+                      </div>
+                      <p style={{ margin: "5px 0", fontSize: "0.75rem" }}>
+                        {truncateText(d.description, 100)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* OOS Manage & AI Refine */}
+            <div>
+              <div
+                className="card"
+                style={{ padding: "15px", marginBottom: "20px" }}
+              >
+                <h3 style={{ fontSize: "1rem", marginTop: 0 }}>
+                  Step 2: Add Knowledge to Phase {oosPhase}
+                </h3>
+                <textarea
+                  style={{
+                    height: "120px",
+                    fontFamily: "monospace",
+                    fontSize: "0.75rem",
+                  }}
+                  value={oosJsonInput}
+                  onChange={(e) => setOosJsonInput(e.target.value)}
+                  placeholder='[{"id": 500, "description": "..."}]'
+                />
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleOosAddKnowledge}
+                  disabled={isOosAdding}
+                  style={{ width: "100%", marginTop: "10px" }}
+                >
+                  {isOosAdding ? "Saving..." : `Index to P${oosPhase}`}
+                </button>
+                <button
+                  className="btn"
+                  onClick={() => handleOosClear(oosPhase)}
+                  style={{
+                    width: "100%",
+                    marginTop: "8px",
+                    background: "none",
+                    color: "#ef4444",
+                    border: "1px solid #ef4444",
+                  }}
+                >
+                  Clear Phase {oosPhase} Index
+                </button>
+              </div>
+
+              <div
+                className="card"
+                style={{
+                  padding: "15px",
+                  border: "1px solid #a78bfa",
+                  background: "#f5f3ff",
+                }}
+              >
+                <h3
+                  style={{ fontSize: "1rem", marginTop: 0, color: "#7c3aed" }}
+                >
+                  Step 3: Laboratory AI Refine
+                </h3>
+                <div className="form-group">
+                  <select
+                    value={oosAiFieldType}
+                    onChange={(e) => setOosAiFieldType(e.target.value)}
+                    style={{ width: "100%", padding: "8px" }}
+                  >
+                    <option value="oosDescription">OOS Description</option>
+                    <option value="investigationHypothesis">Hypothesis</option>
+                    <option value="correctiveAction">Corrective Action</option>
+                  </select>
+                </div>
+                <textarea
+                  style={{ height: "80px" }}
+                  value={oosAiUserInput}
+                  onChange={(e) => setOosAiUserInput(e.target.value)}
+                  placeholder="Keywords to refine..."
+                />
+                <button
+                  className="btn"
+                  onClick={handleOosEnhance}
+                  disabled={oosAiLoading}
+                  style={{ background: "#7c3aed", borderColor: "#7c3aed" }}
+                >
+                  {oosAiLoading ? "Processing..." : "Expert Refine"}
+                </button>
+                {oosAiGeneratedText && (
+                  <div
+                    style={{
+                      marginTop: "10px",
+                      padding: "10px",
+                      background: "white",
+                      borderRadius: "4px",
+                      fontSize: "0.8rem",
+                      border: "1px solid #ddd",
+                    }}
+                  >
+                    {oosAiGeneratedText}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="section">
+          <p>Select a tab above to begin testing.</p>
         </div>
       )}
     </div>

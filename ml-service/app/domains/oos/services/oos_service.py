@@ -225,10 +225,11 @@ def add_to_index(data: Union[Dict, List[Dict]]):
             storage_path = _get_storage_path(phase)
             qdrant_client = get_qdrant_client(storage_path)
             _ensure_oos_collections(qdrant_client, phase)
+            desc_col, root_col = _get_collection_names(phase)
             
             # --- Retrieval for Deduplication ---
             target_ids = []
-            for item in items:
+            for item in items:  
                 try:
                     if "id" in item:
                         target_ids.append(int(item["id"]))
