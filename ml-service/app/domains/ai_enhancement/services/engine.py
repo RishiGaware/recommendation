@@ -1,10 +1,7 @@
 import re
-from fastapi import HTTPException, status
 from google import genai
 from google.genai import types
-from app.domains.ai_enhancement.prompts import SYSTEM_PROMPT, build_refinement_prompt
-from app.domains.ai_enhancement.models import AIRefineRequest
-from app.domains.common.service import robust_text_extraction
+from fastapi import HTTPException, status
 from app.core.config import settings
 
 from app.domains.ai_enhancement.providers.openai_provider import (
@@ -13,7 +10,7 @@ from app.domains.ai_enhancement.providers.openai_provider import (
     get_openai_client,
 )
 
-def _enforce_word_count(text: str, user_prompt: str) -> str:
+def enforce_word_count(text: str, user_prompt: str) -> str:
     """Best-effort word count enforcement via post-processing."""
     match = re.search(r"\b(\d{1,3})\s*words?\b", user_prompt, flags=re.IGNORECASE)
     if not match:
@@ -26,51 +23,37 @@ def _enforce_word_count(text: str, user_prompt: str) -> str:
             return " ".join(words[:target])
     return text
 
-def refine_qms_content(payload: AIRefineRequest) -> str:
+def call_ai_engine(system_prompt: str, user_prompt: str) -> str:
     """
-    Coordinates the refinement of QMS content using the OpenAI Responses API.
-    Includes logic to handle models that do not support temperature.
+    Common engine to call AI providers (Gemini or OpenAI).
+    Centralizes error handling and provider orchestration.
     """
-    processed_value = payload.value
-    if payload.fieldType == "description":
-        processed_value = robust_text_extraction(payload.value)
-
-    prompt = build_refinement_prompt(
-        field_type=payload.fieldType,
-        user_input=processed_value,
-        user_prompt=payload.prompt,
-    )
-
     try:
         generated_text = ""
         provider = settings.AI_PROVIDER
 
         if provider == "gemini":
-            # --- GEMINI IMPLEMENTATION (NEW SDK) ---
             if not settings.GOOGLE_API_KEY:
                 raise RuntimeError("GOOGLE_API_KEY is not configured.")
             
             client = genai.Client(api_key=settings.GOOGLE_API_KEY)
-            
-            # Use configurable Gemini model with system instructions
             response = client.models.generate_content(
                 model=settings.GEMINI_MODEL,
-                contents=prompt,
+                contents=user_prompt,
                 config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
+                    system_instruction=system_prompt,
                     temperature=0.3
                 )
             )
             generated_text = (response.text or "").strip()
             
         elif provider == "openai":
-            # --- OPENAI IMPLEMENTATION ---
             client = get_openai_client()
             request_params = {
                 "model": DEFAULT_MODEL,
                 "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt},
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
                 ],
             }
             try:
@@ -88,7 +71,7 @@ def refine_qms_content(payload: AIRefineRequest) -> str:
         if not generated_text:
             raise ValueError("AI returned an empty response")
 
-        return _enforce_word_count(generated_text, payload.prompt)
+        return generated_text
 
     except (RuntimeError, ValueError) as exc:
         raise HTTPException(
@@ -96,7 +79,7 @@ def refine_qms_content(payload: AIRefineRequest) -> str:
             detail=str(exc),
         ) from exc
     except Exception as exc:
-        print(f"DEBUG: AI Error: {exc}")
+        print(f"DEBUG: AI Engine Error: {exc}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"AI request failed: {exc}",

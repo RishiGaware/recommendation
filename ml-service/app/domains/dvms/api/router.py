@@ -7,10 +7,12 @@ from app.domains.dvms.services.dvms_service import (
     get_dvms_status,
     get_dvms_vectors_by_ids,
 )
+from app.domains.dvms.ai.router import router as dvms_ai_router
 from app.domains.dvms.schemas.models import AnalysisRequest, AddKnowledgeRequest
 from app.core.response_handler import standard_response
 
 router = APIRouter()
+router.include_router(dvms_ai_router, prefix="/ai", tags=["dvms_ai"])
 
 @router.post("/analyze")
 def analyze(payload: AnalysisRequest):

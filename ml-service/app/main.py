@@ -9,7 +9,7 @@ load_dotenv()
 # Explicit imports for routing
 from app.domains.common.router import router as common_router
 from app.domains.dvms.api.router import router as dvms_router
-from app.domains.ai_enhancement.api.v1.router import router as ai_router
+from app.domains.oos.api.router import router as oos_router
 from app.core.response_handler import standard_response
 
 app = FastAPI(title="Universal ML Service Core")
@@ -38,11 +38,11 @@ app.include_router(
     tags=["dvms"]
 )
 
-# Mounting AI Enhancement Domain
+# Mounting OOS Domain (Phased)
 app.include_router(
-    ai_router, 
-    prefix="/ml-service/ai_enhancement", 
-    tags=["ai_enhancement"]
+    oos_router, 
+    prefix="/ml-service/oos", 
+    tags=["oos"]
 )
 
 # --- Global Endpoints ---

@@ -53,4 +53,10 @@ class Settings:
     DVMS_DESC_COLLECTION: str = "dvms_desc"
     DVMS_ROOT_COLLECTION: str = "dvms_root"
 
+    # -- OOS (Phased) Collections --
+    OOS_DESC_P1_COLLECTION: str = "oos_desc_p1"
+    OOS_ROOT_P1_COLLECTION: str = "oos_root_p1"
+    OOS_DESC_P2_COLLECTION: str = "oos_desc_p2"
+    OOS_ROOT_P2_COLLECTION: str = "oos_root_p2"
+
 settings = Settings()
