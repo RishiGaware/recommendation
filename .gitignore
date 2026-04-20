@@ -31,3 +31,10 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Qdrant Database and Locks
+**/qdrant_storage/
+.lock
+segment.json
+segments/
+snapshots/

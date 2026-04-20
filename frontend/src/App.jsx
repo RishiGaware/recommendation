@@ -10,6 +10,7 @@ import {
   addOosKnowledge,
   clearOosKnowledge,
   getOosStatus,
+  getOosVectorsByIds,
 } from "./services/api";
 import { useState, useEffect } from "react";
 
@@ -75,6 +76,13 @@ function App() {
   const [oosAiLoading, setOosAiLoading] = useState(false);
   const [oosAiError, setOosAiError] = useState("");
 
+  // OOS Vectors Tab State
+  const [oosVectorsTabPhase, setOosVectorsTabPhase] = useState(1);
+  const [oosVectorsTabIds, setOosVectorsTabIds] = useState("");
+  const [oosVectorsTabResult, setOosVectorsTabResult] = useState([]);
+  const [oosVectorsTabLoading, setOosVectorsTabLoading] = useState(false);
+  const [oosVectorsTabError, setOosVectorsTabError] = useState("");
+
   const stripHtml = (html) => {
     if (!html) return "";
     try {
@@ -121,6 +129,32 @@ function App() {
     }
   };
 
+  const fetchOosVectorsFromTab = async () => {
+    console.log("Fetching OOS Vectors for phase:", oosVectorsTabPhase);
+    setOosVectorsTabLoading(true);
+
+    setOosVectorsTabError("");
+    setOosVectorsTabResult([]);
+    try {
+      const ids = parseIdsFromText(oosVectorsTabIds);
+      const res = await getOosVectorsByIds({
+        ids,
+        phase: oosVectorsTabPhase,
+        includeVectors: false,
+      });
+      const items = res?.data?.data?.items || [];
+      setOosVectorsTabResult(Array.isArray(items) ? items : []);
+    } catch (e) {
+      setOosVectorsTabError(
+        e?.response?.data?.message ||
+          e?.response?.data?.detail ||
+          "Failed to fetch OOS vectors. Check ML service is running.",
+      );
+    } finally {
+      setOosVectorsTabLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchStatus();
   }, []);
@@ -130,8 +164,10 @@ function App() {
       fetchDeviations();
     } else if (activeTab === "vectors") {
       fetchVectorsFromTab();
+    } else if (activeTab === "oos_vectors") {
+      fetchOosVectorsFromTab();
     }
-  }, [activeTab]);
+  }, [activeTab, oosVectorsTabPhase]);
 
   const fetchDeviations = async () => {
     try {
@@ -463,7 +499,13 @@ function App() {
           className={`nav-item ${activeTab === "vectors" ? "active" : ""}`}
           onClick={() => setActiveTab("vectors")}
         >
-          Vectors
+          DVMS Vectors
+        </div>
+        <div
+          className={`nav-item ${activeTab === "oos_vectors" ? "active" : ""}`}
+          onClick={() => setActiveTab("oos_vectors")}
+        >
+          OOS Vectors
         </div>
         <div
           className={`nav-item ${activeTab === "enhance_ai" ? "active" : ""}`}
@@ -947,6 +989,163 @@ function App() {
                             .slice(0, 10)
                             .map((n) => Number(n).toFixed(3))
                             .join(", ")
+                        : "N/A"}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : activeTab === "oos_vectors" ? (
+        <div className="section">
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "15px",
+            }}
+          >
+            <div>
+              <h2 style={{ fontSize: "1rem", margin: 0 }}>OOS Vectors</h2>
+              <span style={{ fontSize: "0.7rem", color: "#888" }}>
+                Inspecting Phase {oosVectorsTabPhase} embeddings
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                className={`btn ${oosVectorsTabPhase === 1 ? "" : "btn-secondary"}`}
+                onClick={() => setOosVectorsTabPhase(1)}
+                style={{ fontSize: "0.75rem", padding: "5px 12px" }}
+              >
+                Phase 1
+              </button>
+              <button
+                className={`btn ${oosVectorsTabPhase === 2 ? "" : "btn-secondary"}`}
+                onClick={() => setOosVectorsTabPhase(2)}
+                style={{ fontSize: "0.75rem", padding: "5px 12px" }}
+              >
+                Phase 2
+              </button>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>OOS Record IDs (leave empty to fetch all)</label>
+            <input
+              value={oosVectorsTabIds}
+              onChange={(e) => setOosVectorsTabIds(e.target.value)}
+              placeholder="e.g., 501, 502 (or leave empty)"
+              style={{ width: "100%", padding: "10px", borderRadius: "6px" }}
+            />
+            <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+              <button
+                className="btn"
+                onClick={fetchOosVectorsFromTab}
+                disabled={oosVectorsTabLoading}
+              >
+                {oosVectorsTabLoading
+                  ? "Fetching..."
+                  : oosVectorsTabIds.trim()
+                    ? "Search IDs"
+                    : "Refresh Phase List"}
+              </button>
+
+              <button
+                className="btn"
+                onClick={() => handleOosClear(oosVectorsTabPhase)}
+                style={{
+                  backgroundColor: "rgba(239, 68, 68, 0.1)",
+                  borderColor: "rgba(239, 68, 68, 0.3)",
+                  color: "#ef4444",
+                  marginLeft: "auto",
+                }}
+              >
+                Clear Phase {oosVectorsTabPhase}
+              </button>
+            </div>
+          </div>
+
+          {oosVectorsTabError && (
+            <div
+              style={{
+                marginTop: "10px",
+                color: "#b91c1c",
+                fontSize: "0.85rem",
+              }}
+            >
+              {oosVectorsTabError}
+            </div>
+          )}
+
+          {oosVectorsTabResult.length > 0 && (
+            <div className="results-area" style={{ marginTop: "15px" }}>
+              {oosVectorsTabResult.map((it) => (
+                <div key={it.id} className="card" style={{ padding: "12px" }}>
+                  <div
+                    style={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <div>
+                      <strong>ID: {it.id}</strong>
+                      <span
+                        style={{
+                          marginLeft: "8px",
+                          fontSize: "0.75rem",
+                          color: "#0056b3",
+                          background: "#e0f2fe",
+                          padding: "2px 6px",
+                          borderRadius: "10px",
+                        }}
+                      >
+                        {it.payload?.deviationNo || it.payload?.oosNo || "N/A"}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: "0.75rem", color: "#666" }}>
+                      desc={it.descriptionVector?.length || 0} • root=
+                      {it.rootCauseVector?.length || 0}
+                    </span>
+                  </div>
+
+                  {it.payload?.description && (
+                    <p
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "#444",
+                        margin: "8px 0",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      "{truncateText(it.payload.description, 100)}"
+                    </p>
+                  )}
+
+                  <div
+                    style={{
+                      marginTop: "8px",
+                      fontSize: "0.7rem",
+                      color: "#777",
+                      background: "#fafafa",
+                      padding: "8px",
+                      borderRadius: "4px",
+                    }}
+                  >
+                    <div>
+                      <strong>Desc Vector:</strong>{" "}
+                      {Array.isArray(it.descriptionVector)
+                        ? it.descriptionVector
+                            .slice(0, 10)
+                            .map((n) => Number(n).toFixed(3))
+                            .join(", ") + "..."
+                        : "N/A"}
+                    </div>
+                    <div style={{ marginTop: "6px" }}>
+                      <strong>Root Vector:</strong>{" "}
+                      {Array.isArray(it.rootCauseVector)
+                        ? it.rootCauseVector
+                            .slice(0, 10)
+                            .map((n) => Number(n).toFixed(3))
+                            .join(", ") + "..."
                         : "N/A"}
                     </div>
                   </div>

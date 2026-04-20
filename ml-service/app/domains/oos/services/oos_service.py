@@ -185,12 +185,13 @@ def analyze_text(payload: dict):
             status="success",
             message="OOS Analysis completed successfully",
             data={
-                "similarDeviations": sorted_results[:10],
+                "similarRecords": sorted_results[:10],
                 "phase": phase,
                 "searchMode": mode,
                 "threshold": match_threshold
             }
         )
+
 
     except Exception as analysis_error:
         traceback.print_exc()

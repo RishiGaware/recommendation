@@ -43,7 +43,16 @@ export const analyzeOos = (data) =>
   axios.post(`${ML_SERVICE_BASE_URL}/oos/analyze`, data);
 
 export const clearOosKnowledge = (phase) =>
-  axios.post(`${ML_SERVICE_BASE_URL}/oos/clear-knowledge${phase ? `?phase=${phase}` : ""}`);
+  axios.post(
+    `${ML_SERVICE_BASE_URL}/oos/clear-knowledge${phase ? `?phase=${phase}` : ""}`,
+  );
 
 export const addOosKnowledge = (data) =>
   axios.post(`${ML_SERVICE_BASE_URL}/oos/add-knowledge`, data);
+
+export const getOosVectorsByIds = ({ ids, phase, includeVectors = true }) =>
+  axios.post(`${ML_SERVICE_BASE_URL}/oos/vectors`, {
+    ids,
+    phase,
+    includeVectors,
+  });
