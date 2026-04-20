@@ -80,7 +80,7 @@ function App() {
     setVectorsTabResult([]);
     try {
       const ids = parseIdsFromText(vectorsTabIds);
-      const res = await getDvmsVectorsByIds({ ids, includeVectors: true });
+      const res = await getDvmsVectorsByIds({ ids, includeVectors: false });
       const items = res?.data?.data?.items || [];
       setVectorsTabResult(Array.isArray(items) ? items : []);
     } catch (e) {

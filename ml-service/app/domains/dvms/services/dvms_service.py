@@ -418,7 +418,7 @@ def get_dvms_vectors_by_ids(payload: dict):
     """
     try:
         ids = payload.get("ids", [])
-        include_vectors = payload.get("includeVectors", True)
+        include_vectors = payload.get("includeVectors", False)
         
         client = get_qdrant_client()
         _ensure_dvms_collections(client)
