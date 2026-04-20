@@ -380,8 +380,8 @@ def get_dvms_status():
     """
     Checks connection to Qdrant and returns comprehensive collection stats.
     """
-    client = get_qdrant_client()
     try:
+        client = get_qdrant_client()
         _ensure_dvms_collections(client)
         
         # Dynamically discover all collections and their counts
