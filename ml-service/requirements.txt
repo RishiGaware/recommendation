@@ -7,3 +7,4 @@ qdrant-client
 beautifulsoup4
 openai
 python-dotenv
+google-genai==1.4.0

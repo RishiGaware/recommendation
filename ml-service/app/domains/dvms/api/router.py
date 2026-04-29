@@ -12,7 +12,11 @@ from app.domains.dvms.schemas.models import AnalysisRequest, AddKnowledgeRequest
 from app.core.response_handler import standard_response
 
 router = APIRouter()
-router.include_router(dvms_ai_router, prefix="/ai", tags=["dvms_ai"])
+router.include_router(
+    dvms_ai_router,
+    prefix="/ai",
+    tags=["dvms_ai"]
+)
 
 @router.post("/analyze")
 def analyze(payload: AnalysisRequest):

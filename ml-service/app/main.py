@@ -18,17 +18,17 @@ app = FastAPI(title="Universal ML Service Core")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # For development. Change in production.
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=True, # This allows credentials (cookies, auth headers) to be sent.
+    allow_methods=["*"], # This allows all HTTP methods (GET, POST, PUT, DELETE, etc.).
+    allow_headers=["*"], # This allows all headers.
 )
 
 # --- Explicit Router Registration ---
 # Mounting Common Domain
-app.include_router(
-    common_router,
-    prefix="/ml-service/common",
-    tags=["common"],
+app.include_router(  # This mounts the router to the application.
+    common_router,    # Common Domain Router
+    prefix="/ml-service/common",   # This is the prefix for all endpoints in this router.
+    tags=["common"],     # This is the tag for this router.
 )
 
 # Mounting DVMS Domain
